@@ -14,7 +14,7 @@ Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel
 - 🔧 **Modular Design**: Clean, organized codebase
 
 ## Pre-requisite
-- Docker Desktop
+- Docker Desktop installed & running/opened
 - Python3.10 (I'm using 3.10.11)
 
 ## 🚀 Quick Start
@@ -34,6 +34,9 @@ python -m venv venv
 .\venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
+
+# Change branch
+git checkout web-server
 
 # Install dependencies
 pip install -r requirements.txt
