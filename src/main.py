@@ -74,8 +74,9 @@ class ZoneDetectionApp:
             zone=self.polygon_zone,
             color=sv.Color.RED,
             thickness=2,
-            text_thickness=1,
-            text_scale=0.5
+            text_thickness=0,  # Disable text
+            text_scale=0,  # Disable text
+            display_in_zone_count=False  # Disable filled polygon/dot
         )
         
         # Load YOLO model

@@ -154,5 +154,5 @@ class MQTTConfig:
 class DisplayConfig:
     """Display window configuration."""
     
-    SCALE_FACTOR = 2.5  # Window scaling for visibility
+    SCALE_FACTOR = 1.5  # Window scaling for visibility
     WINDOW_NAME_TEMPLATE = "YOLO Zone Detection - {mode_name}"
