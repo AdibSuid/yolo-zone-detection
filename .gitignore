@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# YOLO Models (PyTorch files - will be downloaded)
+*.pt
+
+# OpenVINO exported models (will be generated on setup)
+yolov8*_openvino_model/
+
+# Other model formats
+*.xml
+*.bin
+*.onnx
+*.torchscript
+*.mlmodel
+*.tflite
+*.edgetpu
+*.pb
+
+# Test outputs
+runs/
+output/
+*.jpg
+*.png
+*.mp4
+*.avi
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Coverage
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# Pytest
+.pytest_cache/
+
+# Keep model metadata but ignore actual model files
+!metadata.yaml

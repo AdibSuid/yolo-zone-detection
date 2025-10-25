@@ -1,0 +1,249 @@
+# YOLO Zone Detection with OpenVINO & MQTT
+
+Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel CPUs, featuring zone-based detection and MQTT event publishing.
+
+## ✨ Features
+
+- 🚀 **YOLOv8 with OpenVINO**: Optimized inference for Intel CPUs
+- 📦 **Zone Detection**: Configurable detection zones (box/polygon)
+- 📡 **MQTT Integration**: Real-time event publishing
+- 🎯 **Object Tracking**: ByteTrack for persistent object IDs
+- ⚡ **Performance Modes**: 4 pre-configured modes (ultra_fast to high_accuracy)
+- 📷 **Camera Support**: USB cameras with auto-exposure optimization
+- 🔧 **Modular Design**: Clean, organized codebase
+
+## 🚀 Quick Start
+
+### 1. Clone and Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd yolo_openvino_mqtt
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# Windows:
+.\venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Export Models (First Time Only)
+
+```bash
+# Export YOLOv8 models to OpenVINO format
+python -m scripts.export_models
+```
+
+Or run the automated setup script:
+
+```bash
+python -m scripts.setup
+```
+
+### 3. Find Your Camera
+
+```bash
+# Detect available cameras
+python -m tools.find_cameras
+```
+
+### 4. Start MQTT Broker (Optional)
+
+```bash
+# Using Docker
+cd mqtt-broker
+docker-compose up -d
+```
+
+### 5. Run Detection
+
+```bash
+# Basic usage with default settings
+python -m src.main
+
+# Use USB camera with balanced mode
+python -m src.main --camera 1 --mode balanced
+
+# Ultra fast mode for maximum FPS
+python -m src.main --camera 1 --mode ultra_fast
+
+# List all performance modes
+python -m src.main --list-modes
+```
+
+### 6. Monitor MQTT Events (Optional)
+
+In a separate terminal:
+
+```bash
+python -m tools.mqtt_subscriber
+```
+
+## 📊 Performance Modes
+
+| Mode | Model | Resolution | Frame Skip | Conf Threshold | Use Case |
+|------|-------|------------|------------|----------------|----------|
+| `ultra_fast` | YOLOv8n | 320x320 | 1 | 0.6 | Maximum speed |
+| `maximum_fps` | YOLOv8n | 416x416 | 1 | 0.5 | High FPS |
+| `balanced` | YOLOv8s | 640x480 | 2 | 0.35 | **Recommended** |
+| `high_accuracy` | YOLOv8s | 640x480 | 1 | 0.25 | Best accuracy |
+
+## 📁 Project Structure
+
+```
+yolo_openvino_mqtt/
+├── src/                          # Main application code
+│   ├── __init__.py
+│   ├── main.py                   # Application entry point
+│   ├── config.py                 # Configuration classes
+│   ├── camera.py                 # Camera management
+│   ├── detector.py               # YOLO detection logic
+│   ├── mqtt_client.py            # MQTT publisher
+│   └── performance.py            # Performance monitoring
+├── scripts/                      # Utility scripts
+│   ├── setup.py                  # Automated setup script
+│   └── export_models.py          # Model export to OpenVINO
+├── tools/                        # Development tools
+│   ├── find_cameras.py           # Camera detection utility
+│   └── mqtt_subscriber.py        # Event monitoring
+├── mqtt-broker/                  # MQTT broker setup
+│   └── docker-compose.yml
+├── docs/                         # Documentation
+├── requirements.txt              # Python dependencies
+├── .gitignore
+└── README.md
+```
+
+## 🛠️ Configuration
+
+### Camera Settings
+
+The system auto-configures cameras for optimal performance:
+- **Auto-exposure**: Enabled (15 FPS on most USB cameras)
+- **Brightness**: 128 (boosted for better image quality)
+- **Contrast**: 128
+- **Buffer size**: 1 (minimize latency)
+
+### Detection Zone
+
+Default zone is a centered box (30% width × 40% height). Customize in `src/config.py`:
+
+```python
+class ZoneConfig:
+    BOX_WIDTH_RATIO = 0.3   # 30% of frame width
+    BOX_HEIGHT_RATIO = 0.4  # 40% of frame height
+```
+
+### MQTT Events
+
+Published to topic `cv/zone_events` with format:
+
+```json
+{
+  "event": "inside_zone",
+  "tracker_id": 123,
+  "class_id": 0,
+  "class_name": "person",
+  "confidence": 0.87,
+  "timestamp": 1234567890.123,
+  "fps": 15.2,
+  "mode": "balanced"
+}
+```
+
+## 🧪 Development
+
+### Running Tests
+
+```bash
+# Find available cameras
+python -m tools.find_cameras
+
+# Test MQTT connection
+python -m tools.mqtt_subscriber
+
+# Run detection with debug output
+python -m src.main --camera 1 --mode balanced
+```
+
+### Code Organization
+
+- **src/**: Core application code (modular, reusable)
+- **scripts/**: Setup and export utilities
+- **tools/**: Developer tools and utilities
+- **mqtt-broker/**: MQTT infrastructure
+
+## 📝 Detectable Objects
+
+The system can detect 80 COCO classes including:
+- person, bicycle, car, motorcycle, bus, truck
+- cat, dog, bird, horse, cow, elephant
+- backpack, umbrella, handbag, suitcase
+- bottle, cup, fork, knife, spoon, bowl
+- laptop, mouse, keyboard, cell phone
+- And 60+ more...
+
+Run `python -m src.main --list-modes` for full details.
+
+## 🐛 Troubleshooting
+
+### Camera Issues
+
+```bash
+# Find available cameras
+python -m tools.find_cameras
+
+# Check camera is not in use by another app
+# Close other camera applications and try again
+```
+
+### MQTT Connection Failed
+
+```bash
+# Check Docker is running
+docker ps
+
+# Restart MQTT broker
+cd mqtt-broker
+docker-compose restart
+```
+
+### Low FPS
+
+- Try `ultra_fast` or `maximum_fps` mode
+- Use YOLOv8n (Nano) model instead of YOLOv8s
+- Reduce frame resolution in config
+- Increase frame skip value
+
+### Model Not Found
+
+```bash
+# Export models to OpenVINO format
+python -m scripts.export_models
+```
+
+## 📄 License
+
+MIT License - feel free to use and modify!
+
+## 🙏 Acknowledgments
+
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
+- [OpenVINO Toolkit](https://github.com/openvinotoolkit/openvino)
+- [Supervision](https://github.com/roboflow/supervision)
+- [Paho MQTT](https://github.com/eclipse/paho.mqtt.python)
+
+## 📬 Support
+
+For issues and questions, please open a GitHub issue.
+
+---
+
+**Made with ❤️ for real-time object detection**
