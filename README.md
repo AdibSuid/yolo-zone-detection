@@ -12,6 +12,10 @@ Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel
 - 📷 **Camera Support**: USB cameras with auto-exposure optimization
 - 🔧 **Modular Design**: Clean, organized codebase
 
+## Pre-requisite
+- Docker Desktop
+- Python3.10 (I'm using 3.10.11)
+
 ## 🚀 Quick Start
 
 ### 1. Clone and Setup
@@ -194,6 +198,19 @@ Run `python -m src.main --list-modes` for full details.
 
 ## 🐛 Troubleshooting
 
+### Creating Venv Issue
+
+```bash
+PS C:\Users\Kaizo\Documents\yolo-zone-detection> .\venv\Scripts\activate
+.\venv\Scripts\activate : File C:\Users\Kaizo\Documents\yolo-zone-detection\venv\Scripts\Activate.ps1 cannot be loaded because running scripts is disabled on this system. For more information, see about_Execution_Policies at
+https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line:1 char:1
++ .\venv\Scripts\activate
++ ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : SecurityError: (:) [], PSSecurityException
+    + FullyQualifiedErrorId : UnauthorizedAccess
+```
+
 ### Camera Issues
 
 ```bash
@@ -202,6 +219,19 @@ python -m tools.find_cameras
 
 # Check camera is not in use by another app
 # Close other camera applications and try again
+```
+Open PowerShell as Administrator.
+
+Run:
+```bash
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+Confirm with Y when prompted.
+
+Try activating again:
+
+```bash
+.\venv\Scripts\activate
 ```
 
 ### MQTT Connection Failed
