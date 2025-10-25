@@ -4,19 +4,22 @@ import cv2
 import time
 import traceback
 import argparse
+import threading
 import supervision as sv
+import numpy as np
 
 from .config import PerformanceMode, ZoneConfig, DisplayConfig, CameraConfig
 from .camera import CameraManager
 from .detector import YOLODetector
 from .mqtt_client import MQTTPublisher
 from .performance import PerformanceMonitor
+from .web_dashboard import WebDashboard
 
 
 class ZoneDetectionApp:
     """Main application for YOLO zone detection with MQTT."""
     
-    def __init__(self, mode, camera_index, mqtt_broker, mqtt_port):
+    def __init__(self, mode, camera_index, mqtt_broker, mqtt_port, enable_web=True, web_port=5000):
         """Initialize application.
         
         Args:
@@ -24,6 +27,8 @@ class ZoneDetectionApp:
             camera_index: Camera device index
             mqtt_broker: MQTT broker address
             mqtt_port: MQTT broker port
+            enable_web: Enable web dashboard
+            web_port: Web dashboard port
         """
         self.config = PerformanceMode.get_mode(mode)
         self.mode = mode
@@ -34,6 +39,17 @@ class ZoneDetectionApp:
         self.detector = YOLODetector(self.config['model'], self.config['conf_threshold'])
         self.mqtt = MQTTPublisher(mqtt_broker, mqtt_port, mode)
         self.perf_monitor = PerformanceMonitor()
+        
+        # Web dashboard
+        self.enable_web = enable_web
+        self.web_port = web_port
+        self.web_dashboard = None
+        if enable_web:
+            self.web_dashboard = WebDashboard(
+                camera_id="001",
+                camera_name="Ringo",
+                model_name="yolov8"
+            )
         
         # Supervision components
         self.box_annotator = sv.BoxAnnotator(thickness=self.config['annotation_thickness'])
@@ -48,6 +64,9 @@ class ZoneDetectionApp:
         self.running = False
         self.frame_idx = 0
         self.failed_reads = 0
+        
+        # Track objects in zone for direction detection
+        self.objects_in_zone = set()  # Track which objects are currently in zone
     
     def initialize(self):
         """Initialize all components.
@@ -86,7 +105,20 @@ class ZoneDetectionApp:
         # Connect to MQTT
         self.mqtt.connect()
         
-        print("🎬 Starting inference... Press 'q' to quit")
+        # Start web dashboard in background thread
+        if self.enable_web and self.web_dashboard:
+            print(f"� Starting Web Dashboard on http://0.0.0.0:{self.web_port}")
+            web_thread = threading.Thread(
+                target=self.web_dashboard.start,
+                kwargs={'host': '0.0.0.0', 'port': self.web_port, 'debug': False},
+                daemon=True
+            )
+            web_thread.start()
+            time.sleep(2)  # Give server time to start
+        
+        print("�🎬 Starting inference... Press 'q' to quit")
+        if self.enable_web:
+            print(f"📊 Open dashboard at http://localhost:{self.web_port}")
         print("=" * 60)
         return True
     
@@ -109,6 +141,9 @@ class ZoneDetectionApp:
         
         if should_run_inference:
             self.perf_monitor.tick()
+            
+            # Store frame for cropping objects later
+            self._last_frame = frame.copy()
             
             # Run detection
             inference_start = time.time()
@@ -176,6 +211,24 @@ class ZoneDetectionApp:
                 self.mqtt.publish_zone_event(
                     tracker_id, class_id, class_name, confidence, fps
                 )
+                
+                # Update web dashboard with detection
+                if self.enable_web and self.web_dashboard:
+                    # Determine direction (IN if entering zone, OUT if leaving)
+                    direction = "IN" if tracker_id not in self.objects_in_zone else "IN"
+                    
+                    # Get bounding box and crop object image
+                    bbox = detections.xyxy[det_idx]
+                    x1, y1, x2, y2 = map(int, bbox)
+                    # Get frame from detector's last frame (stored during detection)
+                    if hasattr(self, '_last_frame'):
+                        cropped_img = self._last_frame[y1:y2, x1:x2]
+                        self.web_dashboard.add_detection(
+                            class_name, confidence, direction, cropped_img
+                        )
+                    
+                    # Track object in zone
+                    self.objects_in_zone.add(tracker_id)
     
     def _add_overlay(self, frame, inference_time, ran_inference, detections):
         """Add performance overlay to frame.
@@ -241,6 +294,10 @@ class ZoneDetectionApp:
                         interpolation=cv2.INTER_LINEAR
                     )
                     
+                    # Update web dashboard with frame
+                    if self.enable_web and self.web_dashboard:
+                        self.web_dashboard.update_frame(display_frame)
+                    
                     window_name = DisplayConfig.WINDOW_NAME_TEMPLATE.format(
                         mode_name=self.config['name']
                     )
@@ -284,6 +341,13 @@ class ZoneDetectionApp:
             pass
         
         self.mqtt.disconnect()
+        
+        # Stop web dashboard
+        if self.enable_web and self.web_dashboard:
+            try:
+                self.web_dashboard.stop()
+            except:
+                pass
         
         # Print summary
         self._print_summary()

@@ -7,7 +7,8 @@ Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel
 - 🚀 **YOLOv8 with OpenVINO**: Optimized inference for Intel CPUs
 - 📦 **Zone Detection**: Configurable detection zones (box/polygon)
 - 📡 **MQTT Integration**: Real-time event publishing
-- 🎯 **Object Tracking**: ByteTrack for persistent object IDs
+- � **Web Dashboard**: Real-time browser-based monitoring with live video feed
+- �🎯 **Object Tracking**: ByteTrack for persistent object IDs
 - ⚡ **Performance Modes**: 4 pre-configured modes (ultra_fast to high_accuracy)
 - 📷 **Camera Support**: USB cameras with auto-exposure optimization
 - 🔧 **Modular Design**: Clean, organized codebase
@@ -82,7 +83,20 @@ python -m src.main --camera 1 --mode ultra_fast
 python -m src.main --list-modes
 ```
 
-### 6. Monitor MQTT Events (Optional)
+### 6. Access Web Dashboard
+
+Once the application starts, the web dashboard will be available at:
+- **Local**: http://localhost:5000
+- **Network**: http://[your-ip]:5000 (shown in console output)
+
+The dashboard displays:
+- 📹 **Live Video Feed**: Real-time camera view with detection overlays
+- 📊 **Total Object Count**: Cumulative count of detected objects
+- 📸 **Recent Detections**: List of recent objects with cropped images
+- ℹ️ **System Info**: Camera ID, name, model info, timestamps
+- 🎯 **Detection Details**: Confidence scores, IN/OUT direction, event times
+
+### 7. Monitor MQTT Events (Optional)
 
 In a separate terminal:
 
@@ -110,7 +124,10 @@ yolo_openvino_mqtt/
 │   ├── camera.py                 # Camera management
 │   ├── detector.py               # YOLO detection logic
 │   ├── mqtt_client.py            # MQTT publisher
-│   └── performance.py            # Performance monitoring
+│   ├── performance.py            # Performance monitoring
+│   ├── web_dashboard.py          # Flask web server for dashboard
+│   └── templates/                # HTML templates
+│       └── dashboard.html        # Web dashboard UI
 ├── scripts/                      # Utility scripts
 │   ├── setup.py                  # Automated setup script
 │   └── export_models.py          # Model export to OpenVINO

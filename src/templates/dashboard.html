@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Detection Dashboard - {{ camera_name }}</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .header-info {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .header-info span {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .header-info strong {
+            color: #333;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .video-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .video-section h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        #video-feed {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stats-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stats-section h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        
+        .info-grid {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-item label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-item value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .detections-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .detections-section h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .detection-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .detection-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .detection-item.direction-out {
+            border-left-color: #f093fb;
+        }
+        
+        .detection-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #ddd;
+        }
+        
+        .detection-info {
+            display: grid;
+            gap: 5px;
+        }
+        
+        .detection-info .row {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+        }
+        
+        .detection-info .row span {
+            color: #666;
+        }
+        
+        .detection-info .row strong {
+            color: #333;
+        }
+        
+        .direction-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .direction-in {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .direction-out {
+            background: #f093fb;
+            color: white;
+        }
+        
+        .confidence {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .no-detections {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎥 YOLO Detection Dashboard</h1>
+            <div class="header-info">
+                <span><strong>Camera ID:</strong> <span id="camera-id">001</span></span>
+                <span><strong>Camera Name:</strong> <span id="camera-name">Ringo</span></span>
+                <span><strong>Model:</strong> <span id="model-name">yolov8</span></span>
+                <span><strong>Status:</strong> <span id="status" style="color: #4CAF50;">● Live</span></span>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Video Feed -->
+            <div class="video-section">
+                <h2>📹 Live Camera Feed</h2>
+                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Live Feed">
+            </div>
+            
+            <!-- Stats -->
+            <div class="stats-section">
+                <h2>📊 Statistics</h2>
+                
+                <!-- Total Count -->
+                <div class="stat-card">
+                    <h3>Total Objects Detected</h3>
+                    <div class="value" id="total-count">0</div>
+                </div>
+                
+                <!-- System Info -->
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Model Logic Type</label>
+                        <value id="logic-type">IN/OUT</value>
+                    </div>
+                    <div class="info-item">
+                        <label>Model Zone</label>
+                        <value id="zone">Random</value>
+                    </div>
+                    <div class="info-item">
+                        <label>Current Time</label>
+                        <value id="current-time">--:--:--</value>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Detections -->
+        <div class="detections-section">
+            <h2>🎯 Recent Detections</h2>
+            <div class="detection-list" id="detection-list">
+                <div class="no-detections">
+                    No detections yet. Waiting for objects...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Connect to SocketIO
+        const socket = io();
+        
+        // Update current time every second
+        function updateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('current-time').textContent = 
+                `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+        
+        // Handle initial data
+        socket.on('initial_data', function(data) {
+            document.getElementById('camera-id').textContent = data.camera_id;
+            document.getElementById('camera-name').textContent = data.camera_name;
+            document.getElementById('model-name').textContent = data.model_name;
+            document.getElementById('total-count').textContent = data.total_count;
+            document.getElementById('logic-type').textContent = data.model_logic_type;
+            document.getElementById('zone').textContent = data.model_zone;
+            
+            // Display recent detections
+            if (data.recent_detections && data.recent_detections.length > 0) {
+                displayDetections(data.recent_detections);
+            }
+        });
+        
+        // Handle new detection
+        socket.on('new_detection', function(detection) {
+            addDetection(detection);
+        });
+        
+        // Handle count update
+        socket.on('update_count', function(data) {
+            document.getElementById('total-count').textContent = data.count;
+        });
+        
+        // Display detections
+        function displayDetections(detections) {
+            const list = document.getElementById('detection-list');
+            list.innerHTML = '';
+            
+            detections.forEach(detection => {
+                addDetectionToList(detection);
+            });
+        }
+        
+        // Add single detection
+        function addDetection(detection) {
+            const list = document.getElementById('detection-list');
+            
+            // Remove "no detections" message
+            const noDetections = list.querySelector('.no-detections');
+            if (noDetections) {
+                noDetections.remove();
+            }
+            
+            addDetectionToList(detection);
+            
+            // Keep only last 20 items
+            while (list.children.length > 20) {
+                list.removeChild(list.lastChild);
+            }
+        }
+        
+        // Add detection to list
+        function addDetectionToList(detection) {
+            const list = document.getElementById('detection-list');
+            const item = document.createElement('div');
+            item.className = `detection-item direction-${detection.direction.toLowerCase()}`;
+            
+            const imageHtml = detection.image 
+                ? `<img src="data:image/jpeg;base64,${detection.image}" class="detection-image" alt="${detection.object_class}">`
+                : '<div class="detection-image"></div>';
+            
+            item.innerHTML = `
+                ${imageHtml}
+                <div class="detection-info">
+                    <div class="row">
+                        <strong style="font-size: 16px;">${detection.object_class}</strong>
+                        <span class="direction-badge direction-${detection.direction.toLowerCase()}">${detection.direction}</span>
+                        <span class="confidence">${detection.confidence}%</span>
+                    </div>
+                    <div class="row">
+                        <span><strong>Time:</strong> ${detection.timestamp}</span>
+                    </div>
+                    <div class="row">
+                        <span><strong>Camera:</strong> ${detection.camera_name} (${detection.camera_id})</span>
+                    </div>
+                    <div class="row">
+                        <span><strong>Count:</strong> #${detection.count}</span>
+                        <span><strong>Model:</strong> ${detection.model_name}</span>
+                    </div>
+                    <div class="row">
+                        <span><strong>Zone:</strong> ${detection.model_zone}</span>
+                        <span><strong>Logic:</strong> ${detection.model_logic_type}</span>
+                    </div>
+                </div>
+            `;
+            
+            list.insertBefore(item, list.firstChild);
+        }
+        
+        // Connection status
+        socket.on('connect', function() {
+            document.getElementById('status').innerHTML = '● Live';
+            document.getElementById('status').style.color = '#4CAF50';
+        });
+        
+        socket.on('disconnect', function() {
+            document.getElementById('status').innerHTML = '● Disconnected';
+            document.getElementById('status').style.color = '#f44336';
+        });
+    </script>
+</body>
+</html>
