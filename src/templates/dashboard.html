@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLO Detection Dashboard - {{ camera_name }}</title>
+    <title>YOLO Zone Detection Dashboard</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,276 +13,407 @@
             box-sizing: border-box;
         }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            padding: 20px;
+        html, body {
+            height: 100%;
+            overflow: hidden;
         }
         
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a1929;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
         }
         
         .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #1e3a5f;
+            padding: 10px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .header h1 {
-            color: #667eea;
-            margin-bottom: 10px;
+            color: #fff;
+            font-size: 20px;
+            margin: 0;
         }
         
         .header-info {
             display: flex;
-            gap: 30px;
+            gap: 20px;
             flex-wrap: wrap;
+            font-size: 12px;
+            color: #b0c4de;
         }
         
         .header-info span {
-            color: #666;
-            font-size: 14px;
+            color: #b0c4de;
         }
         
         .header-info strong {
-            color: #333;
+            color: #fff;
         }
         
         .main-content {
+            flex: 1;
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: 1.5fr 0.8fr 1.2fr;
+            grid-template-rows: 1fr auto;
+            gap: 15px;
+            padding: 15px;
+            overflow: hidden;
+            min-height: 0;
         }
         
-        .video-section {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .video-section h2 {
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        #video-feed {
-            width: 100%;
+        .panel {
+            background: #1e3a5f;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         
-        .stats-section {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .stats-section h2 {
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .stat-card h3 {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-        }
-        
-        .stat-card .value {
-            font-size: 36px;
-            font-weight: bold;
-        }
-        
-        .info-grid {
-            display: grid;
-            gap: 10px;
-        }
-        
-        .info-item {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 6px;
+        .panel-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid #2d4a6f;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            background: #16324f;
         }
         
-        .info-item label {
-            color: #666;
+        .panel-header h2 {
+            color: #fff;
             font-size: 14px;
-        }
-        
-        .info-item value {
-            color: #333;
+            margin: 0;
             font-weight: 600;
         }
         
-        .detections-section {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .detections-section h2 {
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        .detection-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        
-        .detection-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: grid;
-            grid-template-columns: 100px 1fr;
-            gap: 15px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .detection-item.direction-out {
-            border-left-color: #f093fb;
-        }
-        
-        .detection-image {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 6px;
-            background: #ddd;
-        }
-        
-        .detection-info {
-            display: grid;
-            gap: 5px;
-        }
-        
-        .detection-info .row {
+        .panel-header .controls {
             display: flex;
+            gap: 10px;
+        }
+        
+        .panel-header .btn {
+            background: transparent;
+            border: 1px solid #4a90e2;
+            color: #4a90e2;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .panel-header .btn:hover {
+            background: #4a90e2;
+            color: #fff;
+        }
+        
+        .panel-body {
+            padding: 15px;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #video-feed {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
-            font-size: 13px;
+            margin-bottom: 15px;
         }
         
-        .detection-info .row span {
-            color: #666;
+        .stat-box {
+            background: #2d4a6f;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
         }
         
-        .detection-info .row strong {
-            color: #333;
+        .stat-box h3 {
+            font-size: 11px;
+            color: #b0c4de;
+            margin: 0 0 8px 0;
+            font-weight: 500;
+        }
+        
+        .stat-box .value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #fff;
+            margin: 0;
+        }
+        
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+        
+        .event-table-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .table-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .table-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .table-wrapper::-webkit-scrollbar-track {
+            background: #1e3a5f;
+        }
+        
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: #4a90e2;
+            border-radius: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        table thead {
+            position: sticky;
+            top: 0;
+            background: #16324f;
+            z-index: 10;
+        }
+        
+        table th {
+            padding: 10px 8px;
+            text-align: left;
+            color: #b0c4de;
+            font-weight: 600;
+            border-bottom: 1px solid #2d4a6f;
+        }
+        
+        table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #2d4a6f;
+            color: #fff;
+        }
+        
+        table tbody tr {
+            transition: background 0.2s;
+        }
+        
+        table tbody tr:hover {
+            background: #2d4a6f;
+        }
+        
+        .detection-image-cell {
+            width: 80px;
+        }
+        
+        .detection-image-small {
+            width: 60px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #000;
         }
         
         .direction-badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 10px;
             font-weight: bold;
         }
         
         .direction-in {
             background: #4CAF50;
-            color: white;
+            color: #fff;
         }
         
         .direction-out {
-            background: #f093fb;
-            color: white;
+            background: #ff6b9d;
+            color: #fff;
         }
         
-        .confidence {
-            color: #667eea;
-            font-weight: bold;
-        }
-        
-        @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+        .confidence-value {
+            color: #4a90e2;
+            font-weight: 600;
         }
         
         .no-detections {
             text-align: center;
-            color: #999;
+            color: #b0c4de;
             padding: 40px;
+            font-size: 13px;
+        }
+        
+        .bottom-section {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            height: 280px;
+            min-height: 280px;
+            max-height: 280px;
+        }
+        
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr auto;
+            }
+            
+            .bottom-section {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                height: 280px;
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+            
+            .bottom-section {
+                grid-row: 2;
+                height: 280px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🎥 YOLO Detection Dashboard</h1>
-            <div class="header-info">
-                <span><strong>Camera ID:</strong> <span id="camera-id">001</span></span>
-                <span><strong>Camera Name:</strong> <span id="camera-name">Ringo</span></span>
-                <span><strong>Model:</strong> <span id="model-name">yolov8</span></span>
-                <span><strong>Status:</strong> <span id="status" style="color: #4CAF50;">● Live</span></span>
-            </div>
+    <!-- Header -->
+    <div class="header">
+        <h1>TEST</h1>
+        <div class="header-info">
+            <span><strong>Camera ID:</strong> <span id="camera-id">001</span></span>
+            <span><strong>Camera Name:</strong> <span id="camera-name">Ringo</span></span>
+            <span><strong>Model:</strong> <span id="model-name">yolov8</span></span>
+            <span><strong>Status:</strong> <span id="status" style="color: #4CAF50;">● Live</span></span>
         </div>
-        
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Video Feed -->
-            <div class="video-section">
-                <h2>📹 Live Camera Feed</h2>
-                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Live Feed">
-            </div>
-            
-            <!-- Stats -->
-            <div class="stats-section">
-                <h2>📊 Statistics</h2>
-                
-                <!-- Total Count -->
-                <div class="stat-card">
-                    <h3>Total Objects Detected</h3>
-                    <div class="value" id="total-count">0</div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Live Feed Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Live Feed 📹 🔄</h2>
+                <div class="controls">
+                    <button class="btn">test</button>
                 </div>
-                
-                <!-- System Info -->
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Model Logic Type</label>
-                        <value id="logic-type">IN/OUT</value>
-                    </div>
-                    <div class="info-item">
-                        <label>Model Zone</label>
-                        <value id="zone">Random</value>
-                    </div>
-                    <div class="info-item">
-                        <label>Current Time</label>
-                        <value id="current-time">--:--:--</value>
-                    </div>
+            </div>
+            <div class="panel-body">
+                <div class="video-container">
+                    <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Live Feed">
                 </div>
             </div>
         </div>
         
-        <!-- Recent Detections -->
-        <div class="detections-section">
-            <h2>🎯 Recent Detections</h2>
-            <div class="detection-list" id="detection-list">
-                <div class="no-detections">
-                    No detections yet. Waiting for objects...
+        <!-- Stats & Graph Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Line Count - Total - Current Hour</h2>
+                <div class="controls">
+                    <button class="btn">test / realtime-Angl2</button>
+                </div>
+            </div>
+            <div class="panel-body" style="display: flex; align-items: center; justify-content: center;">
+                <div class="stat-box" style="width: 100%; max-width: 250px;">
+                    <h3 style="font-size: 10px;">Line Count - Total - Current Hour</h3>
+                    <div class="value" id="current-hour-count" style="font-size: 42px;">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Time Period Graph Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Count by Time Period - Total - By Minute</h2>
+                <div class="controls">
+                    <button class="btn">test / realtime-Angl3</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="chart-container">
+                    <canvas id="minuteChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Event Table Panel -->
+        <div class="panel bottom-section">
+            <div class="panel-header">
+                <h2>Event Table</h2>
+                <div class="controls">
+                    <button class="btn">Camera ID</button>
+                    <button class="btn">Camera Name</button>
+                    <button class="btn">Time</button>
+                    <button class="btn">Event Direction</button>
+                    <button class="btn">Model 1 Name</button>
+                    <button class="btn">Model 1 Image</button>
+                    <button class="btn">Model 1 Pred Class Name</button>
+                    <button class="btn">Model 1 Pred Conf</button>
+                    <button class="btn">Model 1 Logic Type</button>
+                    <button class="btn">Model 1 Zone</button>
+                </div>
+            </div>
+            <div class="panel-body event-table-container">
+                <div class="table-wrapper">
+                    <table id="event-table">
+                        <thead>
+                            <tr>
+                                <th>Camera ID</th>
+                                <th>Camera Name</th>
+                                <th>Time</th>
+                                <th>Event Direction</th>
+                                <th>Model 1 Name</th>
+                                <th>Model 1 Image</th>
+                                <th>Model 1 Pred Class Name</th>
+                                <th>Model 1 Pred Conf</th>
+                                <th>Model 1 Logic Type</th>
+                                <th>Model 1 Zone</th>
+                            </tr>
+                        </thead>
+                        <tbody id="event-table-body">
+                            <tr>
+                                <td colspan="10" class="no-detections">No detections yet. Waiting for objects...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -291,111 +423,194 @@
         // Connect to SocketIO
         const socket = io();
         
-        // Update current time every second
-        function updateTime() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('current-time').textContent = 
-                `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+        // Chart data storage
+        let minuteCounts = {};
+        let hourCounts = {};
+        
+        // Initialize Charts
+        const minuteCtx = document.getElementById('minuteChart').getContext('2d');
+        
+        // Create minute chart (by minute for last 60 minutes)
+        const minuteChart = new Chart(minuteCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Objects per Minute',
+                    data: [],
+                    borderColor: '#4a90e2',
+                    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#b0c4de',
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: {
+                            color: '#2d4a6f'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#b0c4de',
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: '#2d4a6f'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Update charts with detection data
+        function updateCharts(timestamp) {
+            const date = new Date(timestamp);
+            const minute = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            const hour = date.getHours();
+            const currentHour = new Date().getHours();
+            
+            // Update minute counts
+            if (!minuteCounts[minute]) {
+                minuteCounts[minute] = 0;
+            }
+            minuteCounts[minute]++;
+            
+            // Keep only last 60 minutes
+            const minuteKeys = Object.keys(minuteCounts).sort();
+            if (minuteKeys.length > 60) {
+                delete minuteCounts[minuteKeys[0]];
+            }
+            
+            // Update minute chart
+            const sortedMinutes = Object.keys(minuteCounts).sort();
+            minuteChart.data.labels = sortedMinutes;
+            minuteChart.data.datasets[0].data = sortedMinutes.map(m => minuteCounts[m]);
+            minuteChart.update('none');
+            
+            // Update hour count (only current hour)
+            if (hour === currentHour) {
+                if (!hourCounts[minute]) {
+                    hourCounts[minute] = 0;
+                }
+                hourCounts[minute]++;
+                
+                // Update current hour count display
+                const currentHourTotal = Object.values(hourCounts).reduce((a, b) => a + b, 0);
+                document.getElementById('current-hour-count').textContent = currentHourTotal;
+            }
         }
         
-        setInterval(updateTime, 1000);
-        updateTime();
+        // Reset hour counts when hour changes
+        setInterval(() => {
+            const now = new Date();
+            const currentMinute = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const lastMinute = Object.keys(hourCounts).slice(-1)[0];
+            
+            if (lastMinute && !lastMinute.startsWith(String(now.getHours()).padStart(2, '0'))) {
+                // Hour changed, reset
+                hourCounts = {};
+                document.getElementById('current-hour-count').textContent = '0';
+            }
+        }, 60000); // Check every minute
         
         // Handle initial data
         socket.on('initial_data', function(data) {
             document.getElementById('camera-id').textContent = data.camera_id;
             document.getElementById('camera-name').textContent = data.camera_name;
             document.getElementById('model-name').textContent = data.model_name;
-            document.getElementById('total-count').textContent = data.total_count;
-            document.getElementById('logic-type').textContent = data.model_logic_type;
-            document.getElementById('zone').textContent = data.model_zone;
             
-            // Display recent detections
+            // Display recent detections in table
             if (data.recent_detections && data.recent_detections.length > 0) {
-                displayDetections(data.recent_detections);
+                displayDetectionsInTable(data.recent_detections);
+                
+                // Populate charts with historical data
+                data.recent_detections.forEach(detection => {
+                    const timestamp = detection.timestamp_raw || new Date().toISOString();
+                    updateCharts(timestamp);
+                });
             }
         });
         
         // Handle new detection
         socket.on('new_detection', function(detection) {
-            addDetection(detection);
+            addDetectionToTable(detection);
+            const timestamp = detection.timestamp_raw || new Date().toISOString();
+            updateCharts(timestamp);
         });
         
-        // Handle count update
+        // Handle count update (not displayed but keep handler for future use)
         socket.on('update_count', function(data) {
-            document.getElementById('total-count').textContent = data.count;
+            // Total count removed from display, but event still received
         });
         
-        // Display detections
-        function displayDetections(detections) {
-            const list = document.getElementById('detection-list');
-            list.innerHTML = '';
+        // Display detections in table
+        function displayDetectionsInTable(detections) {
+            const tbody = document.getElementById('event-table-body');
+            tbody.innerHTML = '';
             
             detections.forEach(detection => {
-                addDetectionToList(detection);
+                addRowToTable(detection);
             });
         }
         
-        // Add single detection
-        function addDetection(detection) {
-            const list = document.getElementById('detection-list');
+        // Add single detection to table
+        function addDetectionToTable(detection) {
+            const tbody = document.getElementById('event-table-body');
             
             // Remove "no detections" message
-            const noDetections = list.querySelector('.no-detections');
-            if (noDetections) {
-                noDetections.remove();
+            if (tbody.querySelector('.no-detections')) {
+                tbody.innerHTML = '';
             }
             
-            addDetectionToList(detection);
+            addRowToTable(detection);
             
-            // Keep only last 20 items
-            while (list.children.length > 20) {
-                list.removeChild(list.lastChild);
+            // Keep only last 50 rows
+            while (tbody.children.length > 50) {
+                tbody.removeChild(tbody.lastChild);
             }
         }
         
-        // Add detection to list
-        function addDetectionToList(detection) {
-            const list = document.getElementById('detection-list');
-            const item = document.createElement('div');
-            item.className = `detection-item direction-${detection.direction.toLowerCase()}`;
+        // Add row to table
+        function addRowToTable(detection) {
+            const tbody = document.getElementById('event-table-body');
+            const row = document.createElement('tr');
             
             const imageHtml = detection.image 
-                ? `<img src="data:image/jpeg;base64,${detection.image}" class="detection-image" alt="${detection.object_class}">`
-                : '<div class="detection-image"></div>';
+                ? `<img src="data:image/jpeg;base64,${detection.image}" class="detection-image-small" alt="${detection.object_class}">`
+                : '<div class="detection-image-small"></div>';
             
-            item.innerHTML = `
-                ${imageHtml}
-                <div class="detection-info">
-                    <div class="row">
-                        <strong style="font-size: 16px;">${detection.object_class}</strong>
-                        <span class="direction-badge direction-${detection.direction.toLowerCase()}">${detection.direction}</span>
-                        <span class="confidence">${detection.confidence}%</span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Time:</strong> ${detection.timestamp}</span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Camera:</strong> ${detection.camera_name} (${detection.camera_id})</span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Count:</strong> #${detection.count}</span>
-                        <span><strong>Model:</strong> ${detection.model_name}</span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Zone:</strong> ${detection.model_zone}</span>
-                        <span><strong>Logic:</strong> ${detection.model_logic_type}</span>
-                    </div>
-                </div>
+            const directionBadge = `<span class="direction-badge direction-${detection.direction.toLowerCase()}">${detection.direction}</span>`;
+            
+            row.innerHTML = `
+                <td>${detection.camera_id}</td>
+                <td>${detection.camera_name}</td>
+                <td>${detection.timestamp}</td>
+                <td>${directionBadge}</td>
+                <td>${detection.model_name}</td>
+                <td class="detection-image-cell">${imageHtml}</td>
+                <td>${detection.object_class}</td>
+                <td><span class="confidence-value">${detection.confidence}%</span></td>
+                <td>${detection.model_logic_type}</td>
+                <td>${detection.model_zone}</td>
             `;
             
-            list.insertBefore(item, list.firstChild);
+            tbody.insertBefore(row, tbody.firstChild);
         }
         
         // Connection status

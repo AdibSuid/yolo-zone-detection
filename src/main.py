@@ -212,23 +212,24 @@ class ZoneDetectionApp:
                     tracker_id, class_id, class_name, confidence, fps
                 )
                 
-                # Update web dashboard with detection
+                # Update web dashboard with detection (only count new objects)
                 if self.enable_web and self.web_dashboard:
-                    # Determine direction (IN if entering zone, OUT if leaving)
-                    direction = "IN" if tracker_id not in self.objects_in_zone else "IN"
-                    
-                    # Get bounding box and crop object image
-                    bbox = detections.xyxy[det_idx]
-                    x1, y1, x2, y2 = map(int, bbox)
-                    # Get frame from detector's last frame (stored during detection)
-                    if hasattr(self, '_last_frame'):
-                        cropped_img = self._last_frame[y1:y2, x1:x2]
-                        self.web_dashboard.add_detection(
-                            class_name, confidence, direction, cropped_img
-                        )
-                    
-                    # Track object in zone
-                    self.objects_in_zone.add(tracker_id)
+                    # Only count and add detection if this is a NEW object entering the zone
+                    if tracker_id not in self.objects_in_zone:
+                        direction = "IN"
+                        
+                        # Get bounding box and crop object image
+                        bbox = detections.xyxy[det_idx]
+                        x1, y1, x2, y2 = map(int, bbox)
+                        # Get frame from detector's last frame (stored during detection)
+                        if hasattr(self, '_last_frame'):
+                            cropped_img = self._last_frame[y1:y2, x1:x2]
+                            self.web_dashboard.add_detection(
+                                class_name, confidence, direction, cropped_img
+                            )
+                        
+                        # Track object in zone (mark as counted)
+                        self.objects_in_zone.add(tracker_id)
     
     def _add_overlay(self, frame, inference_time, ran_inference, detections):
         """Add performance overlay to frame.
@@ -298,15 +299,20 @@ class ZoneDetectionApp:
                     if self.enable_web and self.web_dashboard:
                         self.web_dashboard.update_frame(display_frame)
                     
-                    window_name = DisplayConfig.WINDOW_NAME_TEMPLATE.format(
-                        mode_name=self.config['name']
-                    )
-                    cv2.imshow(window_name, display_frame)
-                    
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord("q"):
-                        print("\n⚠️  'q' pressed - exiting")
-                        break
+                    # Only show OpenCV window if web dashboard is disabled
+                    if not self.enable_web:
+                        window_name = DisplayConfig.WINDOW_NAME_TEMPLATE.format(
+                            mode_name=self.config['name']
+                        )
+                        cv2.imshow(window_name, display_frame)
+                        
+                        key = cv2.waitKey(1) & 0xFF
+                        if key == ord("q"):
+                            print("\n⚠️  'q' pressed - exiting")
+                            break
+                    else:
+                        # Just process events without showing window
+                        cv2.waitKey(1)
                         
                 except cv2.error as e:
                     print(f"OpenCV error: {e}")

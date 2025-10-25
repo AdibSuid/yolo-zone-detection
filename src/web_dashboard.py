@@ -96,7 +96,9 @@ class WebDashboard:
             self.total_object_count += 1
             
             # Create detection event
-            timestamp = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+            now = datetime.now()
+            timestamp = now.strftime("%Y/%m/%d %H:%M:%S")
+            timestamp_raw = now.isoformat()  # For chart processing
             
             # Encode cropped image to base64 if provided
             image_base64 = None
@@ -109,6 +111,7 @@ class WebDashboard:
                 'camera_id': self.camera_id,
                 'camera_name': self.camera_name,
                 'timestamp': timestamp,
+                'timestamp_raw': timestamp_raw,  # ISO format for charts
                 'object_class': class_name,
                 'confidence': round(confidence * 100, 2),  # Convert to percentage
                 'direction': direction,
