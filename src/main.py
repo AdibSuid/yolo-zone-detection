@@ -36,7 +36,15 @@ class ZoneDetectionApp:
         
         # Initialize components
         self.camera = CameraManager(camera_index, self.config['resolution'])
-        self.detector = YOLODetector(self.config['model'], self.config['conf_threshold'])
+        
+        # Pass IoU threshold if available in config, otherwise use default 0.5
+        iou_threshold = self.config.get('iou_threshold', 0.5)
+        self.detector = YOLODetector(
+            self.config['model'], 
+            self.config['conf_threshold'],
+            iou_threshold
+        )
+        
         self.mqtt = MQTTPublisher(mqtt_broker, mqtt_port, mode)
         self.perf_monitor = PerformanceMonitor()
         
@@ -267,13 +275,24 @@ class ZoneDetectionApp:
             while self.running:
                 # Read frame
                 ret, frame = self.camera.read()
-                if not ret:
-                    self.failed_reads += 1
-                    if self.failed_reads >= CameraConfig.MAX_FAILED_READS:
-                        print(f"❌ Too many failed reads ({self.failed_reads}). Exiting.")
-                        break
-                    time.sleep(0.1)
-                    continue
+                if not ret or frame is None:
+                   self.failed_reads += 1
+                   print(f"⚠️ Camera read failed ({self.failed_reads}/{CameraConfig.MAX_FAILED_READS})")
+
+                   if self.failed_reads >= CameraConfig.MAX_FAILED_READS:
+                       print("🔄 Attempting to reconnect camera...")
+                       try:
+                           self.camera.release()
+                           time.sleep(1)
+                           self.camera.initialize()
+                           self.failed_reads = 0
+                           continue
+                       except Exception as e:
+                           print(f"💥 Camera reconnect failed: {e}")
+                           time.sleep(2)
+                           continue
+                   time.sleep(0.1)
+                   continue
                 
                 self.failed_reads = 0
                 self.frame_idx += 1
@@ -387,7 +406,7 @@ Examples:
     )
     
     parser.add_argument("--mode", type=str, default="balanced",
-                       choices=["ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
+                       choices=["ultra_fast", "maximum_fps", "balanced", "high_accuracy", "custom"],
                        help="Performance mode (default: balanced)")
     
     parser.add_argument("--camera", type=int, default=0,

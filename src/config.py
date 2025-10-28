@@ -45,12 +45,24 @@ class PerformanceMode:
         "text_scale": 0.5
     }
     
+    # Custom YOLOv8 Model Configuration
+    CUSTOM = {
+        "name": "Custom YOLOv8",
+        "model": "custom_yolov5_openvino_model/",  # Directory name (kept for compatibility)
+        "resolution": (640, 640),  # Matches your training: image_size=640
+        "frame_skip": 1,
+        "conf_threshold": 0.5,  # Matches your config: confidence=0.5
+        "iou_threshold": 0.5,   # Matches your config: iou_threshold=0.5 (NMS)
+        "annotation_thickness": 2,
+        "text_scale": 0.5
+    }
+    
     @classmethod
     def get_mode(cls, mode_name):
         """Get performance mode configuration.
         
         Args:
-            mode_name: Name of the mode (ultra_fast, maximum_fps, balanced, high_accuracy)
+            mode_name: Name of the mode (ultra_fast, maximum_fps, balanced, high_accuracy, custom)
             
         Returns:
             Configuration dictionary
@@ -59,7 +71,8 @@ class PerformanceMode:
             "ultra_fast": cls.ULTRA_FAST,
             "maximum_fps": cls.MAXIMUM_FPS,
             "balanced": cls.BALANCED,
-            "high_accuracy": cls.HIGH_ACCURACY
+            "high_accuracy": cls.HIGH_ACCURACY,
+            "custom": cls.CUSTOM  # Add custom mode
         }
         return modes.get(mode_name, cls.BALANCED)
     
@@ -72,7 +85,8 @@ class PerformanceMode:
             ("ultra_fast", cls.ULTRA_FAST),
             ("maximum_fps", cls.MAXIMUM_FPS),
             ("balanced", cls.BALANCED),
-            ("high_accuracy", cls.HIGH_ACCURACY)
+            ("high_accuracy", cls.HIGH_ACCURACY),
+            ("custom", cls.CUSTOM)  # Add custom mode
         ]
         for key, config in modes:
             print(f"\n🔧 {key}:")
