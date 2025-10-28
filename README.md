@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ```bash
 # Export YOLOv8 models to OpenVINO format
-python -m scripts.export_models
+python -m scripts.export_custom_models
 ```
 
 Or run the automated setup script:
@@ -74,13 +74,10 @@ docker-compose up -d
 
 ```bash
 # Basic usage with default settings
-python -m src.main
+python -m src.main --mode custom --camera 1
 
-# Use USB camera with balanced mode
-python -m src.main --camera 1 --mode balanced
-
-# Ultra fast mode for maximum FPS
-python -m src.main --camera 1 --mode ultra_fast
+# Use USB camera with web dashboard
+python -m src.main --mode custom --camera 1 --web
 
 # List all performance modes
 python -m src.main --list-modes
@@ -115,35 +112,6 @@ python -m tools.mqtt_subscriber
 | `maximum_fps` | YOLOv8n | 416x416 | 1 | 0.5 | High FPS |
 | `balanced` | YOLOv8s | 640x480 | 2 | 0.35 | **Recommended** |
 | `high_accuracy` | YOLOv8s | 640x480 | 1 | 0.25 | Best accuracy |
-
-## 📁 Project Structure
-
-```
-yolo_openvino_mqtt/
-├── src/                          # Main application code
-│   ├── __init__.py
-│   ├── main.py                   # Application entry point
-│   ├── config.py                 # Configuration classes
-│   ├── camera.py                 # Camera management
-│   ├── detector.py               # YOLO detection logic
-│   ├── mqtt_client.py            # MQTT publisher
-│   ├── performance.py            # Performance monitoring
-│   ├── web_dashboard.py          # Flask web server for dashboard
-│   └── templates/                # HTML templates
-│       └── dashboard.html        # Web dashboard UI
-├── scripts/                      # Utility scripts
-│   ├── setup.py                  # Automated setup script
-│   └── export_models.py          # Model export to OpenVINO
-├── tools/                        # Development tools
-│   ├── find_cameras.py           # Camera detection utility
-│   └── mqtt_subscriber.py        # Event monitoring
-├── mqtt-broker/                  # MQTT broker setup
-│   └── docker-compose.yml
-├── docs/                         # Documentation
-├── requirements.txt              # Python dependencies
-├── .gitignore
-└── README.md
-```
 
 ## 🛠️ Configuration
 
