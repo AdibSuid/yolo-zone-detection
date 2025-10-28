@@ -7,15 +7,17 @@ import supervision as sv
 class YOLODetector:
     """YOLO model inference and tracking."""
     
-    def __init__(self, model_path, confidence_threshold):
+    def __init__(self, model_path, confidence_threshold, iou_threshold=0.5):
         """Initialize YOLO detector.
         
         Args:
             model_path: Path to YOLO model
             confidence_threshold: Minimum confidence for detections
+            iou_threshold: IoU threshold for NMS (Non-Maximum Suppression)
         """
         self.model_path = model_path
         self.confidence_threshold = confidence_threshold
+        self.iou_threshold = iou_threshold
         self.model = None
         self.tracker = sv.ByteTrack()
         
@@ -53,6 +55,7 @@ class YOLODetector:
             results = self.model.predict(
                 source=frame,
                 conf=self.confidence_threshold,
+                iou=self.iou_threshold,  # IoU threshold for NMS
                 verbose=False,
                 device='cpu'
             )

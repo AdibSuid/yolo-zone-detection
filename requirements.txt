@@ -10,5 +10,11 @@ supervision==0.26.1
 # MQTT
 paho-mqtt==2.1.0
 
+# Web Dashboard
+flask==3.0.0
+flask-cors==4.0.0
+flask-socketio==5.3.5
+python-socketio==5.10.0
+
 # Utilities
 tqdm>=4.66.0

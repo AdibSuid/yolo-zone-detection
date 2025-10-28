@@ -4,19 +4,22 @@ import cv2
 import time
 import traceback
 import argparse
+import threading
 import supervision as sv
+import numpy as np
 
 from .config import PerformanceMode, ZoneConfig, DisplayConfig, CameraConfig
 from .camera import CameraManager
 from .detector import YOLODetector
 from .mqtt_client import MQTTPublisher
 from .performance import PerformanceMonitor
+from .web_dashboard import WebDashboard
 
 
 class ZoneDetectionApp:
     """Main application for YOLO zone detection with MQTT."""
     
-    def __init__(self, mode, camera_index, mqtt_broker, mqtt_port):
+    def __init__(self, mode, camera_index, mqtt_broker, mqtt_port, enable_web=True, web_port=5000):
         """Initialize application.
         
         Args:
@@ -24,6 +27,8 @@ class ZoneDetectionApp:
             camera_index: Camera device index
             mqtt_broker: MQTT broker address
             mqtt_port: MQTT broker port
+            enable_web: Enable web dashboard
+            web_port: Web dashboard port
         """
         self.config = PerformanceMode.get_mode(mode)
         self.mode = mode
@@ -31,9 +36,28 @@ class ZoneDetectionApp:
         
         # Initialize components
         self.camera = CameraManager(camera_index, self.config['resolution'])
-        self.detector = YOLODetector(self.config['model'], self.config['conf_threshold'])
+        
+        # Pass IoU threshold if available in config, otherwise use default 0.5
+        iou_threshold = self.config.get('iou_threshold', 0.5)
+        self.detector = YOLODetector(
+            self.config['model'], 
+            self.config['conf_threshold'],
+            iou_threshold
+        )
+        
         self.mqtt = MQTTPublisher(mqtt_broker, mqtt_port, mode)
         self.perf_monitor = PerformanceMonitor()
+        
+        # Web dashboard
+        self.enable_web = enable_web
+        self.web_port = web_port
+        self.web_dashboard = None
+        if enable_web:
+            self.web_dashboard = WebDashboard(
+                camera_id="001",
+                camera_name="Ringo",
+                model_name="yolov8"
+            )
         
         # Supervision components
         self.box_annotator = sv.BoxAnnotator(thickness=self.config['annotation_thickness'])
@@ -48,6 +72,9 @@ class ZoneDetectionApp:
         self.running = False
         self.frame_idx = 0
         self.failed_reads = 0
+        
+        # Track objects in zone for direction detection
+        self.objects_in_zone = set()  # Track which objects are currently in zone
     
     def initialize(self):
         """Initialize all components.
@@ -86,7 +113,20 @@ class ZoneDetectionApp:
         # Connect to MQTT
         self.mqtt.connect()
         
-        print("🎬 Starting inference... Press 'q' to quit")
+        # Start web dashboard in background thread
+        if self.enable_web and self.web_dashboard:
+            print(f"� Starting Web Dashboard on http://0.0.0.0:{self.web_port}")
+            web_thread = threading.Thread(
+                target=self.web_dashboard.start,
+                kwargs={'host': '0.0.0.0', 'port': self.web_port, 'debug': False},
+                daemon=True
+            )
+            web_thread.start()
+            time.sleep(2)  # Give server time to start
+        
+        print("�🎬 Starting inference... Press 'q' to quit")
+        if self.enable_web:
+            print(f"📊 Open dashboard at http://localhost:{self.web_port}")
         print("=" * 60)
         return True
     
@@ -109,6 +149,9 @@ class ZoneDetectionApp:
         
         if should_run_inference:
             self.perf_monitor.tick()
+            
+            # Store frame for cropping objects later
+            self._last_frame = frame.copy()
             
             # Run detection
             inference_start = time.time()
@@ -176,6 +219,25 @@ class ZoneDetectionApp:
                 self.mqtt.publish_zone_event(
                     tracker_id, class_id, class_name, confidence, fps
                 )
+                
+                # Update web dashboard with detection (only count new objects)
+                if self.enable_web and self.web_dashboard:
+                    # Only count and add detection if this is a NEW object entering the zone
+                    if tracker_id not in self.objects_in_zone:
+                        direction = "IN"
+                        
+                        # Get bounding box and crop object image
+                        bbox = detections.xyxy[det_idx]
+                        x1, y1, x2, y2 = map(int, bbox)
+                        # Get frame from detector's last frame (stored during detection)
+                        if hasattr(self, '_last_frame'):
+                            cropped_img = self._last_frame[y1:y2, x1:x2]
+                            self.web_dashboard.add_detection(
+                                class_name, confidence, direction, cropped_img
+                            )
+                        
+                        # Track object in zone (mark as counted)
+                        self.objects_in_zone.add(tracker_id)
     
     def _add_overlay(self, frame, inference_time, ran_inference, detections):
         """Add performance overlay to frame.
@@ -213,13 +275,24 @@ class ZoneDetectionApp:
             while self.running:
                 # Read frame
                 ret, frame = self.camera.read()
-                if not ret:
-                    self.failed_reads += 1
-                    if self.failed_reads >= CameraConfig.MAX_FAILED_READS:
-                        print(f"❌ Too many failed reads ({self.failed_reads}). Exiting.")
-                        break
-                    time.sleep(0.1)
-                    continue
+                if not ret or frame is None:
+                   self.failed_reads += 1
+                   print(f"⚠️ Camera read failed ({self.failed_reads}/{CameraConfig.MAX_FAILED_READS})")
+
+                   if self.failed_reads >= CameraConfig.MAX_FAILED_READS:
+                       print("🔄 Attempting to reconnect camera...")
+                       try:
+                           self.camera.release()
+                           time.sleep(1)
+                           self.camera.initialize()
+                           self.failed_reads = 0
+                           continue
+                       except Exception as e:
+                           print(f"💥 Camera reconnect failed: {e}")
+                           time.sleep(2)
+                           continue
+                   time.sleep(0.1)
+                   continue
                 
                 self.failed_reads = 0
                 self.frame_idx += 1
@@ -241,15 +314,24 @@ class ZoneDetectionApp:
                         interpolation=cv2.INTER_LINEAR
                     )
                     
-                    window_name = DisplayConfig.WINDOW_NAME_TEMPLATE.format(
-                        mode_name=self.config['name']
-                    )
-                    cv2.imshow(window_name, display_frame)
+                    # Update web dashboard with frame
+                    if self.enable_web and self.web_dashboard:
+                        self.web_dashboard.update_frame(display_frame)
                     
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord("q"):
-                        print("\n⚠️  'q' pressed - exiting")
-                        break
+                    # Only show OpenCV window if web dashboard is disabled
+                    if not self.enable_web:
+                        window_name = DisplayConfig.WINDOW_NAME_TEMPLATE.format(
+                            mode_name=self.config['name']
+                        )
+                        cv2.imshow(window_name, display_frame)
+                        
+                        key = cv2.waitKey(1) & 0xFF
+                        if key == ord("q"):
+                            print("\n⚠️  'q' pressed - exiting")
+                            break
+                    else:
+                        # Just process events without showing window
+                        cv2.waitKey(1)
                         
                 except cv2.error as e:
                     print(f"OpenCV error: {e}")
@@ -285,6 +367,13 @@ class ZoneDetectionApp:
         
         self.mqtt.disconnect()
         
+        # Stop web dashboard
+        if self.enable_web and self.web_dashboard:
+            try:
+                self.web_dashboard.stop()
+            except:
+                pass
+        
         # Print summary
         self._print_summary()
     
@@ -317,7 +406,7 @@ Examples:
     )
     
     parser.add_argument("--mode", type=str, default="balanced",
-                       choices=["ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
+                       choices=["ultra_fast", "maximum_fps", "balanced", "high_accuracy", "custom"],
                        help="Performance mode (default: balanced)")
     
     parser.add_argument("--camera", type=int, default=0,
