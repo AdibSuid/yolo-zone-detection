@@ -5,7 +5,6 @@ import time
 from datetime import datetime
 
 
-# MQTT Configuration
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC = "cv/zone_events"
@@ -26,13 +25,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
 def on_message(client, userdata, msg):
     """Callback when message received."""
     try:
-        # Parse the JSON payload
         payload = json.loads(msg.payload.decode())
         
-        # Format timestamp
         timestamp = datetime.fromtimestamp(payload.get('timestamp', time.time()))
         
-        # Print the event in a nice format
         print(f"📅 {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"🎯 Event: {payload.get('event', 'unknown')}")
         print(f"🏷️  Object: {payload.get('class_name', 'N/A')}")
@@ -55,23 +51,18 @@ def on_disconnect(client, userdata, rc, properties=None):
 
 def main():
     """Main entry point for MQTT subscriber."""
-    # Create MQTT client
     client = mqtt.Client(
         client_id="zone_event_subscriber",
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     
-    # Set up callbacks
     client.on_connect = on_connect
     client.on_message = on_message
     client.on_disconnect = on_disconnect
     
     try:
-        # Connect to broker
         print(f"🔄 Connecting to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}...")
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        
-        # Start the loop
         client.loop_forever()
         
     except KeyboardInterrupt:

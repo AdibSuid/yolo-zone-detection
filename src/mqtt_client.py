@@ -9,13 +9,7 @@ class MQTTPublisher:
     """MQTT client for publishing zone detection events."""
     
     def __init__(self, broker, port, mode):
-        """Initialize MQTT publisher.
-        
-        Args:
-            broker: MQTT broker address
-            port: MQTT broker port
-            mode: Performance mode name (for client ID)
-        """
+        """Initialize MQTT publisher."""
         self.broker = broker
         self.port = port
         self.mode = mode
@@ -23,11 +17,7 @@ class MQTTPublisher:
         self.connected = False
     
     def connect(self):
-        """Connect to MQTT broker.
-        
-        Returns:
-            True if successful, False otherwise
-        """
+        """Connect to MQTT broker."""
         try:
             client_id = MQTTConfig.get_client_id(self.mode)
             self.client = mqtt.Client(
@@ -44,15 +34,7 @@ class MQTTPublisher:
             return False
     
     def publish_zone_event(self, tracker_id, class_id, class_name, confidence, fps):
-        """Publish detection event when object is in zone.
-        
-        Args:
-            tracker_id: Object tracker ID
-            class_id: Object class ID
-            class_name: Object class name
-            confidence: Detection confidence
-            fps: Current FPS
-        """
+        """Publish detection event when object is in zone."""
         if not self.connected or self.client is None:
             return
         

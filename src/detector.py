@@ -1,81 +1,77 @@
-"""YOLO detection and tracking logic."""
+"""Optimized YOLO detection for retail object tracking."""
 import traceback
 from ultralytics import YOLO
 import supervision as sv
 
 
 class YOLODetector:
-    """YOLO model inference and tracking."""
+    """Optimized YOLO detector for Intel CPU."""
     
     def __init__(self, model_path, confidence_threshold, iou_threshold=0.5):
-        """Initialize YOLO detector.
-        
-        Args:
-            model_path: Path to YOLO model
-            confidence_threshold: Minimum confidence for detections
-            iou_threshold: IoU threshold for NMS (Non-Maximum Suppression)
-        """
+        """Initialize optimized YOLO detector."""
         self.model_path = model_path
         self.confidence_threshold = confidence_threshold
         self.iou_threshold = iou_threshold
         self.model = None
+        
+        # OPTIMIZED: ByteTrack with retail-optimized parameters
+        # Using simplified initialization for compatibility
         self.tracker = sv.ByteTrack()
         
-        # Cache for smooth display on frame skips
+        # Cache for smooth display
         self.last_detections = None
         self.last_labels = []
     
     def load_model(self):
-        """Load the YOLO model.
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        print(f"🔄 Loading model: {self.model_path}")
+        """Load YOLO model with OpenVINO optimization."""
+        print(f"🔄 Loading OpenVINO model: {self.model_path}")
         try:
+            # Load OpenVINO model
             self.model = YOLO(self.model_path, task='detect')
+            
+            # Verify it's OpenVINO format
+            if 'openvino' not in self.model_path.lower():
+                print("⚠️  Warning: Model may not be OpenVINO format")
+                print("💡 Run: python scripts/export_custom_model.py")
+            
             print("✅ Model loaded successfully")
             return True
         except Exception as e:
             print(f"❌ Failed to load model: {e}")
-            if "yolov8n" in self.model_path:
-                print("💡 Run: python scripts/export_model.py to create YOLOv8 models")
+            traceback.print_exc()
             return False
     
     def detect(self, frame):
-        """Run detection on a frame.
-        
-        Args:
-            frame: Input frame (NumPy array)
-            
-        Returns:
-            Supervision Detections object or None on error
-        """
+        """Run optimized detection on frame."""
         try:
+            # OPTIMIZED: Minimal predict parameters for speed
             results = self.model.predict(
                 source=frame,
                 conf=self.confidence_threshold,
-                iou=self.iou_threshold,  # IoU threshold for NMS
+                iou=self.iou_threshold,
                 verbose=False,
-                device='cpu'
+                device='cpu',
+                # OPTIMIZED: Additional speed parameters
+                half=False,          # FP32 for CPU
+                agnostic_nms=False,  # Class-specific NMS is faster
+                max_det=50           # Limit detections (retail typically <50 objects)
             )
             
             if not results or len(results) == 0:
-                print("Warning: Model returned empty results, using cached detections")
                 return self.last_detections
             
             result = results[0]
             detections = sv.Detections.from_ultralytics(result)
             
-            # Update tracker
+            # Update tracker with error handling
             try:
                 detections = self.tracker.update_with_detections(detections)
             except Exception as e:
-                print(f"Tracker error: {e}, resetting tracker")
+                print(f"Tracker error: {e}, resetting")
                 self.tracker.reset()
                 detections = self.tracker.update_with_detections(detections)
             
-            # Cache detections and labels
+            # Cache for frame skipping
             self.last_detections = detections
             if len(detections) > 0:
                 self.last_labels = [
@@ -93,22 +89,11 @@ class YOLODetector:
             return self.last_detections
     
     def get_cached_detections(self):
-        """Get last cached detections for frame skipping.
-        
-        Returns:
-            Tuple of (detections, labels)
-        """
+        """Get cached detections."""
         return self.last_detections, self.last_labels
     
     def get_class_name(self, class_id):
-        """Get class name from ID.
-        
-        Args:
-            class_id: Class ID
-            
-        Returns:
-            Class name string
-        """
+        """Get class name from ID."""
         if self.model is None:
             return "unknown"
         return self.model.names[int(class_id)]

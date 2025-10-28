@@ -7,11 +7,7 @@ class PerformanceMonitor:
     """Monitor and calculate FPS and other performance metrics."""
     
     def __init__(self, window_size=30):
-        """Initialize performance monitor.
-        
-        Args:
-            window_size: Number of samples to use for FPS calculation
-        """
+        """Initialize performance monitor."""
         self.times = deque(maxlen=window_size)
         self.last_time = time.time()
         self.frame_count = 0
@@ -26,22 +22,14 @@ class PerformanceMonitor:
         self.frame_count += 1
     
     def get_fps(self):
-        """Calculate current FPS.
-        
-        Returns:
-            Current FPS as float
-        """
+        """Calculate current FPS."""
         if len(self.times) == 0:
             return 0
         avg_time = sum(self.times) / len(self.times)
         return 1.0 / avg_time if avg_time > 0 else 0
     
     def get_summary(self):
-        """Get performance summary statistics.
-        
-        Returns:
-            Dictionary with performance metrics
-        """
+        """Get performance summary statistics."""
         return {
             "fps": self.get_fps(),
             "frames_processed": self.frame_count,

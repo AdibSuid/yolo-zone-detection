@@ -4,7 +4,7 @@ from ultralytics import YOLO
 import numpy as np
 
 
-def export_custom_yolov5_model():
+def export_custom_yolov8_model():
     """Export your custom YOLOv8 best.pt model to OpenVINO format."""
     
     print("🔄 Exporting Custom YOLOv8 Model to OpenVINO format...")
@@ -12,10 +12,10 @@ def export_custom_yolov5_model():
     
     # Custom model configuration
     model_config = {
-        'name': 'best.pt',  # Your custom YOLOv5 model
-        'output': 'custom_yolov5_openvino_model',
-        'description': 'Custom YOLOv5 Model',
-        'imgsz': 640  # Change this if your model was trained with different size
+        'name': 'best.pt',  # Your custom YOLOv8 model
+        'output': 'custom_yolov8_openvino_model',
+        'description': 'Custom YOLOv8 Model',
+        'imgsz': 640  # Your config: image_size=640
     }
     
     model_name = model_config['name']
@@ -53,7 +53,7 @@ def export_custom_yolov5_model():
         print(f"   Model type: {model.task}")
         print(f"   Number of classes: {len(model.names) if hasattr(model, 'names') else 'Unknown'}")
         if hasattr(model, 'names'):
-            print(f"   Classes: {list(model.names.values())[:10]}...")  # Show first 10 classes
+            print(f"   Classes: {list(model.names.values())[:10]}...")
         
         # Export to OpenVINO format
         print(f"\n   Exporting to OpenVINO format...")
@@ -63,7 +63,7 @@ def export_custom_yolov5_model():
             dynamic=False,      # Static shapes for better CPU performance
             half=False,         # FP32 for Intel CPU (better accuracy)
             int8=False,         # Keep FP32 (can quantize later for speed)
-            imgsz=imgsz,        # Input size (should match your training size)
+            imgsz=imgsz,        # Your config: image_size=640
             workspace=4         # Limit workspace for CPU
         )
         
@@ -100,20 +100,26 @@ def main():
     print("=" * 60)
     print("Custom YOLOv8 Model Export Tool")
     print("=" * 60)
+    print("\n📋 Your Model Configuration:")
+    print("   confidence: 0.5")
+    print("   image_size: 640")
+    print("   iou_threshold: 0.5")
     print("\n📋 Prerequisites:")
     print("   1. Place your 'best.pt' model in the project root directory")
     print("   2. Ensure ultralytics package is installed")
     print("   3. Make sure you have OpenVINO toolkit installed\n")
     
-    success = export_custom_yolov5_model()
+    success = export_custom_yolov8_model()
     
     if success:
         print("\n" + "=" * 60)
         print("🎉 Export completed successfully!")
         print("\n📋 Next Steps:")
-        print("   1. Update config.py to use 'custom_yolov5_openvino_model/'")
-        print("   2. Or use --model flag when running:")
+        print("   1. Verify export: ls custom_yolov8_openvino_model/")
+        print("   2. Run detection:")
         print("      python -m src.main --camera 1 --mode custom")
+        print("\n💡 Note: Web dashboard is DISABLED by default for best performance")
+        print("   Enable with: python -m src.main --camera 1 --mode custom --web")
         print("=" * 60)
     else:
         print("\n" + "=" * 60)

@@ -3,14 +3,7 @@ import cv2
 
 
 def find_cameras(max_cameras=10):
-    """Find all available camera indices.
-    
-    Args:
-        max_cameras: Maximum number of cameras to check
-        
-    Returns:
-        List of camera information dictionaries
-    """
+    """Find all available camera indices."""
     print("🔍 Searching for available cameras...")
     print("=" * 50)
     
@@ -19,7 +12,6 @@ def find_cameras(max_cameras=10):
     for i in range(max_cameras):
         cap = cv2.VideoCapture(i)
         if cap.isOpened():
-            # Try to read a frame to confirm it works
             ret, frame = cap.read()
             if ret:
                 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -31,7 +23,6 @@ def find_cameras(max_cameras=10):
                 print(f"   FPS: {fps}")
                 print(f"   Frame shape: {frame.shape}")
                 
-                # Try to get backend info
                 backend = cap.getBackendName()
                 print(f"   Backend: {backend}")
                 print()
@@ -56,7 +47,7 @@ def find_cameras(max_cameras=10):
         print(f"📊 Found {len(available_cameras)} camera(s)")
         print("\n📝 To use a camera, run with --camera option:")
         for cam in available_cameras:
-            print(f"   python -m src.main --camera {cam['index']}  # {cam['width']}x{cam['height']} @ {cam['fps']} FPS")
+            print(f"   python -m src.main --camera {cam['index']} --mode custom")
         
         print("\n💡 Common setup:")
         print("   Index 0 = Built-in webcam (usually)")
@@ -67,11 +58,7 @@ def find_cameras(max_cameras=10):
 
 
 def test_cameras_interactive(cameras):
-    """Test each camera with live preview.
-    
-    Args:
-        cameras: List of camera information from find_cameras()
-    """
+    """Test each camera with live preview."""
     if not cameras:
         return
     
@@ -94,7 +81,6 @@ def test_cameras_interactive(cameras):
                     print("   ⚠️ Failed to read frame")
                     break
                 
-                # Add text overlay
                 cv2.putText(frame, f"Camera {idx} - Press 'q' for next, ESC to exit", 
                            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 cv2.putText(frame, f"{cam['width']}x{cam['height']}", 
@@ -125,7 +111,7 @@ def main():
         test_cameras_interactive(cameras)
         
         print("\nUpdate your command with the camera index you want to use:")
-        print("   python -m src.main --camera X  # Replace X with your chosen index")
+        print("   python -m src.main --camera X --mode custom")
     
     print("\n👋 Done!")
 

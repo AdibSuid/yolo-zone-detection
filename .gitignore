@@ -39,6 +39,7 @@ env/
 
 # OpenVINO exported models (will be generated on setup)
 yolov8*_openvino_model/
+custom_*_openvino_model/
 
 # Other model formats
 *.xml
