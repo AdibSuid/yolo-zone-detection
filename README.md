@@ -46,7 +46,8 @@ pip install -r requirements.txt
 
 ```bash
 # Export YOLOv8 models to OpenVINO format
-python -m scripts.export_custom_models
+python -m scripts.export_models
+python -m scripts.export_custom_model
 ```
 
 Or run the automated setup script:
