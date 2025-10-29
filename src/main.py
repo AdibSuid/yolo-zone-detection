@@ -71,7 +71,7 @@ class ZoneDetectionApp:
             if WEB_DASHBOARD_AVAILABLE:
                 self.web_dashboard = WebDashboard(
                     camera_id="001",
-                    camera_name="Ringo",
+                    camera_name="Camera",
                     model_name="yolov8"
                 )
             else:

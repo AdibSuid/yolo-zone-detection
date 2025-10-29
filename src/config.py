@@ -9,67 +9,11 @@ class PerformanceMode:
     # confidence: 0.5, image_size: 640, iou_threshold: 0.5
     CUSTOM = {
         "name": "Custom YOLOv8",
-        "model": "custom_yolov8_openvino_model/",
+        "model": "best_openvino_model/",
         "resolution": (640, 640),  # Your training size
         "frame_skip": 1,  # Process every frame
         "conf_threshold": 0.5,  # Your config: confidence=0.5
         "iou_threshold": 0.5,  # Your config: iou_threshold=0.5
-        "annotation_thickness": 2,
-        "text_scale": 0.5
-    }
-    
-    # Retail-optimized mode for 10-15 FPS target
-    RETAIL_OPTIMIZED = {
-        "name": "Retail Optimized",
-        "model": "custom_yolov8_openvino_model/",
-        "resolution": (416, 416),  # Optimal for Intel CPU
-        "frame_skip": 1,
-        "conf_threshold": 0.5,
-        "iou_threshold": 0.5,
-        "annotation_thickness": 1,
-        "text_scale": 0.4
-    }
-    
-    ULTRA_FAST = {
-        "name": "Ultra Fast",
-        "model": "yolov8n_openvino_model/",
-        "resolution": (320, 320),
-        "frame_skip": 1,
-        "conf_threshold": 0.6,
-        "iou_threshold": 0.5,
-        "annotation_thickness": 1,
-        "text_scale": 0.3
-    }
-    
-    MAXIMUM_FPS = {
-        "name": "Maximum FPS",
-        "model": "yolov8n_openvino_model/",
-        "resolution": (416, 416),
-        "frame_skip": 1,
-        "conf_threshold": 0.5,
-        "iou_threshold": 0.5,
-        "annotation_thickness": 1,
-        "text_scale": 0.4
-    }
-    
-    BALANCED = {
-        "name": "Balanced",
-        "model": "yolov8s_openvino_model/",
-        "resolution": (640, 480),
-        "frame_skip": 2,
-        "conf_threshold": 0.35,
-        "iou_threshold": 0.5,
-        "annotation_thickness": 2,
-        "text_scale": 0.5
-    }
-    
-    HIGH_ACCURACY = {
-        "name": "High Accuracy",
-        "model": "yolov8s_openvino_model/",
-        "resolution": (640, 480),
-        "frame_skip": 1,
-        "conf_threshold": 0.25,
-        "iou_threshold": 0.5,
         "annotation_thickness": 2,
         "text_scale": 0.5
     }
@@ -79,11 +23,6 @@ class PerformanceMode:
         """Get performance mode configuration."""
         modes = {
             "custom": cls.CUSTOM,  # Your custom YOLOv8 model
-            "retail_optimized": cls.RETAIL_OPTIMIZED,
-            "ultra_fast": cls.ULTRA_FAST,
-            "maximum_fps": cls.MAXIMUM_FPS,
-            "balanced": cls.BALANCED,
-            "high_accuracy": cls.HIGH_ACCURACY,
         }
         return modes.get(mode_name, cls.CUSTOM)  # Default to custom
     
@@ -94,11 +33,6 @@ class PerformanceMode:
         print("=" * 60)
         modes = [
             ("custom", cls.CUSTOM),  # Show custom first
-            ("retail_optimized", cls.RETAIL_OPTIMIZED),
-            ("ultra_fast", cls.ULTRA_FAST),
-            ("maximum_fps", cls.MAXIMUM_FPS),
-            ("balanced", cls.BALANCED),
-            ("high_accuracy", cls.HIGH_ACCURACY),
         ]
         for key, config in modes:
             print(f"\n🔧 {key}:")

@@ -35,9 +35,6 @@ python -m venv venv
 # Linux/Mac:
 source venv/bin/activate
 
-# Change branch
-git checkout web-server
-
 # Install dependencies
 pip install -r requirements.txt
 ```
@@ -46,8 +43,7 @@ pip install -r requirements.txt
 
 ```bash
 # Export YOLOv8 models to OpenVINO format
-python -m scripts.export_models
-python -m scripts.export_custom_model
+python .\scripts\export.py
 ```
 
 Or run the automated setup script:
@@ -75,13 +71,11 @@ docker-compose up -d
 
 ```bash
 # Basic usage with default settings
-python -m src.main --mode custom --camera 1
+python -m src.main --camera 0
 
 # Use USB camera with web dashboard
-python -m src.main --mode custom --camera 1 --web
+python -m src.main --camera 0 --web
 
-# List all performance modes
-python -m src.main --list-modes
 ```
 
 ### 6. Access Web Dashboard
@@ -104,15 +98,6 @@ In a separate terminal:
 ```bash
 python -m tools.mqtt_subscriber
 ```
-
-## 📊 Performance Modes
-
-| Mode | Model | Resolution | Frame Skip | Conf Threshold | Use Case |
-|------|-------|------------|------------|----------------|----------|
-| `ultra_fast` | YOLOv8n | 320x320 | 1 | 0.6 | Maximum speed |
-| `maximum_fps` | YOLOv8n | 416x416 | 1 | 0.5 | High FPS |
-| `balanced` | YOLOv8s | 640x480 | 2 | 0.35 | **Recommended** |
-| `high_accuracy` | YOLOv8s | 640x480 | 1 | 0.25 | Best accuracy |
 
 ## 🛠️ Configuration
 
@@ -162,8 +147,6 @@ python -m tools.find_cameras
 # Test MQTT connection
 python -m tools.mqtt_subscriber
 
-# Run detection with debug output
-python -m src.main --camera 1 --mode balanced
 ```
 
 ### Code Organization
@@ -233,13 +216,6 @@ docker ps
 cd mqtt-broker
 docker-compose restart
 ```
-
-### Low FPS
-
-- Try `ultra_fast` or `maximum_fps` mode
-- Use YOLOv8n (Nano) model instead of YOLOv8s
-- Reduce frame resolution in config
-- Increase frame skip value
 
 ### Model Not Found
 
