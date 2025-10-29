@@ -7,6 +7,12 @@ import argparse
 import threading
 import supervision as sv
 import numpy as np
+import warnings
+warnings.filterwarnings('error')  # Convert warnings to exceptions
+
+# Suppress runtime warnings from ByteTrack tracker
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+np.seterr(divide='ignore', invalid='ignore')
 
 from .config import PerformanceMode, ZoneConfig, DisplayConfig, CameraConfig
 from .camera import CameraManager
