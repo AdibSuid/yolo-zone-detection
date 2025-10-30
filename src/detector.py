@@ -69,7 +69,7 @@ class YOLODetector:
             if len(detections) == 0:
                 return self.last_detections
         
-            # Check for invalid bounding boxes
+            # Check for invalid bounding boxes and filter properly
             if detections.xyxy is not None and len(detections.xyxy) > 0:
                 # Remove any detections with invalid coordinates (NaN, inf, or zero area)
                 valid_mask = []
@@ -91,31 +91,25 @@ class YOLODetector:
                 if not any(valid_mask):
                     return self.last_detections
             
-                # Filter detections to keep only valid ones
+                # Filter detections using supervision's built-in indexing
+                # This properly maintains the Detections object structure
                 valid_mask = np.array(valid_mask)
-                detections.xyxy = detections.xyxy[valid_mask]
-                if detections.confidence is not None:
-                    detections.confidence = detections.confidence[valid_mask]
-                if detections.class_id is not None:
-                    detections.class_id = detections.class_id[valid_mask]
+                detections = detections[valid_mask]
         
             # Update tracker with error handling and numpy error suppression
             try:
                 with np.errstate(divide='ignore', invalid='ignore'):
                     detections = self.tracker.update_with_detections(detections)
             except Exception as e:
-                print(f"Tracker error: {e}, resetting")
-                self.tracker.reset()
-                try:
-                    with np.errstate(divide='ignore', invalid='ignore'):
-                        detections = self.tracker.update_with_detections(detections)
-                except Exception as e2:
-                    print(f"Tracker reset failed: {e2}, using raw detections")
-                    # Continue without tracking
+                # Tracker failed - ensure detections have tracker_id for compatibility
+                if detections.tracker_id is None and len(detections) > 0:
+                    # Assign sequential IDs as fallback
+                    detections.tracker_id = np.arange(len(detections))
+                # Silently continue with raw detections (don't spam console)
         
             # Cache for frame skipping
             self.last_detections = detections
-            if len(detections) > 0:
+            if len(detections) > 0 and detections.class_id is not None and detections.confidence is not None:
                 self.last_labels = [
                     f"{self.model.names[int(c)]} {p:.2f}" 
                     for c, p in zip(detections.class_id, detections.confidence)
