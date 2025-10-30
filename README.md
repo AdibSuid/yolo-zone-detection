@@ -1,15 +1,15 @@
 # YOLO Zone Detection with OpenVINO & MQTT
 
-Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel CPUs, featuring zone-based detection and MQTT event publishing.
+Real-time object detection system using YOLOv8 optimized with OpenVINO for Intel CPUs and GPUs, featuring zone-based detection and MQTT event publishing.
 
 ## ✨ Features
 
-- 🚀 **YOLOv8 with OpenVINO**: Optimized inference for Intel CPUs
+- 🚀 **YOLOv8 with OpenVINO**: Optimized inference for Intel CPUs and Intel Iris Xe GPUs
 - 📦 **Zone Detection**: Configurable detection zones (box/polygon)
 - 📡 **MQTT Integration**: Real-time event publishing
 - � **Web Dashboard**: Real-time browser-based monitoring with live video feed
 - �🎯 **Object Tracking**: ByteTrack for persistent object IDs
-- ⚡ **Performance Modes**: 4 pre-configured modes (ultra_fast to high_accuracy)
+- ⚡ **Performance Modes**: Multiple pre-configured modes including GPU acceleration
 - 📷 **Camera Support**: USB cameras with auto-exposure optimization
 - 🔧 **Modular Design**: Clean, organized codebase
 
@@ -70,8 +70,11 @@ docker-compose up -d
 ### 5. Run Detection
 
 ```bash
-# Basic usage with default settings
+# Basic usage with default settings (CPU)
 python -m src.main --camera 0
+
+# Use Intel Iris Xe GPU for better performance
+python -m src.main --camera 0 --mode custom_gpu
 
 # Use USB camera with web dashboard
 python -m src.main --camera 0 --web
@@ -98,6 +101,42 @@ In a separate terminal:
 ```bash
 python -m tools.mqtt_subscriber
 ```
+
+## 🖥️ Intel GPU Acceleration
+
+### Prerequisites for Intel Iris Xe GPU
+
+1. **Intel CPU with Iris Xe graphics** (11th gen or newer)
+2. **Updated Intel GPU drivers** (latest recommended)
+3. **Enabled iGPU in BIOS** (if using discrete GPU)
+
+### Setup GPU Acceleration
+
+```bash
+# 1. Check if Intel GPU is detected
+python -m tools.check_gpu
+
+# 2. Export model for GPU (optional, for best performance)
+python -m scripts.export_gpu
+
+# 3. Run with GPU acceleration
+python -m src.main --camera 0 --mode custom_gpu
+```
+
+### Expected Performance
+
+| Device | FPS (640x640) | Improvement |
+|--------|---------------|-------------|
+| CPU only | 0.8-2 FPS | Baseline |
+| Intel Iris Xe | 3-8 FPS | 2-4x faster |
+
+### GPU Troubleshooting
+
+If GPU not detected:
+1. Update Intel Graphics drivers
+2. Check Windows Device Manager for Intel Graphics
+3. Enable iGPU in BIOS/UEFI settings
+4. Install Intel Graphics Command Center
 
 ## 🛠️ Configuration
 

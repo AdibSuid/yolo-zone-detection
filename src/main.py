@@ -54,10 +54,12 @@ class ZoneDetectionApp:
         self.camera = CameraManager(camera_index, self.config['resolution'])
         
         iou_threshold = self.config.get('iou_threshold', 0.5)
+        device = self.config.get('device', 'auto')
         self.detector = YOLODetector(
             self.config['model'], 
             self.config['conf_threshold'],
-            iou_threshold
+            iou_threshold,
+            device
         )
         
         self.mqtt = MQTTPublisher(mqtt_broker, mqtt_port, mode)
@@ -101,12 +103,14 @@ class ZoneDetectionApp:
     
     def initialize(self):
         """Initialize all components."""
-        print(f"🚀 OPTIMIZED YOLO Zone Detection for Intel CPU")
+        device = self.config.get('device', 'auto')
+        print(f"🚀 OPTIMIZED YOLO Zone Detection for Intel CPU/GPU")
         print(f"   Mode: {self.config['name']}")
         print(f"   Model: {self.config['model']}")
         print(f"   Resolution: {self.config['resolution'][0]}x{self.config['resolution'][1]}")
         print(f"   Confidence: {self.config['conf_threshold']}")
         print(f"   IOU Threshold: {self.config['iou_threshold']}")
+        print(f"   Device: {device}")
         print(f"   Camera: Index {self.camera_index}")
         print(f"   Display: {'Enabled' if self.enable_display else 'Disabled'}")
         print(f"   Web Dashboard: {'Enabled' if self.enable_web else 'Disabled (use --web to enable)'}")
@@ -384,12 +388,15 @@ class ZoneDetectionApp:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Optimized YOLO Zone Detection for Intel CPU",
+        description="Optimized YOLO Zone Detection for Intel CPU/GPU",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Custom YOLOv8 model (web dashboard OFF by default)
+  # Custom YOLOv8 model on CPU (web dashboard OFF by default)
   python -m src.main --mode custom --camera 1
+
+  # Custom YOLOv8 model on Intel Iris Xe GPU
+  python -m src.main --mode custom_gpu --camera 1
 
   # With web dashboard enabled
   python -m src.main --mode custom --camera 1 --web
@@ -403,8 +410,8 @@ Examples:
     )
     
     parser.add_argument("--mode", type=str, default="custom",
-                       choices=["custom", "retail_optimized", "ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
-                       help="Performance mode (default: custom)")
+                       choices=["custom", "custom_gpu", "retail_optimized", "ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
+                       help="Performance mode (default: custom, use custom_gpu for Intel Iris Xe)")
     
     parser.add_argument("--camera", type=int, default=0,
                        help="Camera index (default: 0)")

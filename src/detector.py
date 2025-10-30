@@ -5,13 +5,14 @@ import supervision as sv
 
 
 class YOLODetector:
-    """Optimized YOLO detector for Intel CPU."""
+    """Optimized YOLO detector for Intel CPU and GPU."""
     
-    def __init__(self, model_path, confidence_threshold, iou_threshold=0.5):
+    def __init__(self, model_path, confidence_threshold, iou_threshold=0.5, device='auto'):
         """Initialize optimized YOLO detector."""
         self.model_path = model_path
         self.confidence_threshold = confidence_threshold
         self.iou_threshold = iou_threshold
+        self.device = device
         self.model = None
         
         # OPTIMIZED: ByteTrack with retail-optimized parameters
@@ -25,6 +26,7 @@ class YOLODetector:
     def load_model(self):
         """Load YOLO model with OpenVINO optimization."""
         print(f"🔄 Loading OpenVINO model: {self.model_path}")
+        print(f"🖥️  Target device: {self.device}")
         try:
             # Load OpenVINO model
             self.model = YOLO(self.model_path, task='detect')
@@ -33,6 +35,23 @@ class YOLODetector:
             if 'openvino' not in self.model_path.lower():
                 print("⚠️  Warning: Model may not be OpenVINO format")
                 print("💡 Run: python scripts/export_custom_model.py")
+            
+            # Check available devices if auto
+            if self.device.lower() == 'auto':
+                try:
+                    import openvino as ov
+                    core = ov.Core()
+                    devices = core.available_devices
+                    print(f"📱 Available OpenVINO devices: {devices}")
+                    if 'GPU' in devices:
+                        print("✅ Intel GPU detected and will be used!")
+                        self.device = 'GPU'
+                    else:
+                        print("⚠️  No GPU detected, falling back to CPU")
+                        self.device = 'CPU'
+                except:
+                    print("⚠️  Could not detect devices, using CPU")
+                    self.device = 'CPU'
             
             print("✅ Model loaded successfully")
             return True
@@ -52,9 +71,9 @@ class YOLODetector:
                 conf=self.confidence_threshold,
                 iou=self.iou_threshold,
                 verbose=False,
-                device='cpu',
+                device=self.device,  # Use configured device
                 # OPTIMIZED: Additional speed parameters
-                half=False,          # FP32 for CPU
+                half=(self.device.upper() == 'GPU'),  # FP16 for GPU, FP32 for CPU
                 agnostic_nms=False,  # Class-specific NMS is faster
                 max_det=50           # Limit detections (retail typically <50 objects)
             )

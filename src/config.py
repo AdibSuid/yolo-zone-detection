@@ -3,7 +3,7 @@ import numpy as np
 
 
 class PerformanceMode:
-    """Performance mode configurations optimized for Intel CPU."""
+    """Performance mode configurations optimized for Intel CPU and GPU."""
     
     # Custom YOLOv8 Model Configuration
     # confidence: 0.5, image_size: 640, iou_threshold: 0.5
@@ -15,7 +15,21 @@ class PerformanceMode:
         "conf_threshold": 0.5,  # Your config: confidence=0.5
         "iou_threshold": 0.5,  # Your config: iou_threshold=0.5
         "annotation_thickness": 2,
-        "text_scale": 0.5
+        "text_scale": 0.5,
+        "device": "auto"  # Let OpenVINO choose best device (GPU if available)
+    }
+    
+    # GPU-optimized mode for Intel Iris Xe
+    CUSTOM_GPU = {
+        "name": "Custom YOLOv8 (GPU)",
+        "model": "best_openvino_model/",
+        "resolution": (640, 640),  # Your training size
+        "frame_skip": 1,  # Process every frame
+        "conf_threshold": 0.5,  # Your config: confidence=0.5
+        "iou_threshold": 0.5,  # Your config: iou_threshold=0.5
+        "annotation_thickness": 2,
+        "text_scale": 0.5,
+        "device": "GPU"  # Force GPU usage
     }
     
     @classmethod
@@ -23,6 +37,7 @@ class PerformanceMode:
         """Get performance mode configuration."""
         modes = {
             "custom": cls.CUSTOM,  # Your custom YOLOv8 model
+            "custom_gpu": cls.CUSTOM_GPU,  # GPU-optimized version
         }
         return modes.get(mode_name, cls.CUSTOM)  # Default to custom
     
@@ -33,6 +48,7 @@ class PerformanceMode:
         print("=" * 60)
         modes = [
             ("custom", cls.CUSTOM),  # Show custom first
+            ("custom_gpu", cls.CUSTOM_GPU),  # GPU mode
         ]
         for key, config in modes:
             print(f"\n🔧 {key}:")
@@ -41,6 +57,7 @@ class PerformanceMode:
             print(f"   ⏭️  Frame Skip: {config['frame_skip']}")
             print(f"   🎚️  Confidence: {config['conf_threshold']}")
             print(f"   🔧 Model: {config['model']}")
+            print(f"   🖥️  Device: {config.get('device', 'CPU')}")
 
 
 class CameraConfig:
