@@ -27,7 +27,26 @@ class YOLODetector:
         """Load YOLO model with OpenVINO optimization."""
         print(f"🔄 Loading OpenVINO model: {self.model_path}")
         print(f"🖥️  Target device: {self.device}")
+        
         try:
+            import os
+            
+            # Configure OpenVINO for GPU if requested
+            if self.device.upper() == 'GPU':
+                print("🔧 Configuring OpenVINO for Intel GPU...")
+                # Set OpenVINO environment variables for GPU
+                os.environ['OV_GPU_ENABLE_OPENCL_QUEUE_SHARING'] = '1'
+                os.environ['OV_GPU_ENABLE_OPTIMIZE'] = '1'
+                # Force OpenVINO to prefer GPU
+                os.environ['OV_DEFAULT_DEVICE'] = 'GPU'
+            elif self.device.upper() == 'AUTO':
+                print("🔧 Configuring OpenVINO for auto device selection...")
+                # Let OpenVINO choose the best device
+                os.environ.pop('OV_DEFAULT_DEVICE', None)
+            else:
+                print("🔧 Configuring OpenVINO for CPU...")
+                os.environ['OV_DEFAULT_DEVICE'] = 'CPU'
+            
             # Load OpenVINO model
             self.model = YOLO(self.model_path, task='detect')
             
@@ -36,25 +55,40 @@ class YOLODetector:
                 print("⚠️  Warning: Model may not be OpenVINO format")
                 print("💡 Run: python scripts/export_custom_model.py")
             
-            # Check available devices if auto
-            if self.device.lower() == 'auto':
-                try:
-                    import openvino as ov
-                    core = ov.Core()
-                    devices = core.available_devices
-                    print(f"📱 Available OpenVINO devices: {devices}")
+            # Check available devices
+            try:
+                import openvino as ov
+                core = ov.Core()
+                devices = core.available_devices
+                print(f"📱 Available OpenVINO devices: {devices}")
+                
+                if self.device.upper() == 'GPU' and 'GPU' in devices:
+                    print("✅ Intel GPU detected and will be used!")
+                elif self.device.upper() == 'GPU' and 'GPU' not in devices:
+                    print("⚠️  GPU requested but not available, falling back to CPU")
+                    self.device = 'CPU'
+                    os.environ['OV_DEFAULT_DEVICE'] = 'CPU'
+                elif self.device.upper() == 'AUTO':
                     if 'GPU' in devices:
                         print("✅ Intel GPU detected and will be used!")
                         self.device = 'GPU'
+                        os.environ['OV_DEFAULT_DEVICE'] = 'GPU'
                     else:
-                        print("⚠️  No GPU detected, falling back to CPU")
+                        print("⚠️  No GPU detected, using CPU")
                         self.device = 'CPU'
-                except:
-                    print("⚠️  Could not detect devices, using CPU")
-                    self.device = 'CPU'
+                        os.environ['OV_DEFAULT_DEVICE'] = 'CPU'
+                else:
+                    print(f"✅ Using device: {self.device}")
+                    
+            except Exception as e:
+                print(f"⚠️  Could not detect OpenVINO devices: {e}")
+                print("   Continuing with CPU fallback...")
+                self.device = 'CPU'
+                os.environ['OV_DEFAULT_DEVICE'] = 'CPU'
             
             print("✅ Model loaded successfully")
             return True
+            
         except Exception as e:
             print(f"❌ Failed to load model: {e}")
             traceback.print_exc()
@@ -65,15 +99,20 @@ class YOLODetector:
         try:
             import numpy as np
         
+            # For OpenVINO GPU, we need to use 'cpu' as device parameter 
+            # since Ultralytics doesn't directly support OpenVINO GPU selection
+            # The GPU usage is handled by the OpenVINO model itself
+            ultralytics_device = 'cpu'  # Always use 'cpu' for OpenVINO models
+            
             # OPTIMIZED: Minimal predict parameters for speed
             results = self.model.predict(
                 source=frame,
                 conf=self.confidence_threshold,
                 iou=self.iou_threshold,
                 verbose=False,
-                device=self.device,  # Use configured device
+                device=ultralytics_device,  # Use 'cpu' for OpenVINO (GPU handled internally)
                 # OPTIMIZED: Additional speed parameters
-                half=(self.device.upper() == 'GPU'),  # FP16 for GPU, FP32 for CPU
+                half=False,          # OpenVINO handles precision internally
                 agnostic_nms=False,  # Class-specific NMS is faster
                 max_det=50           # Limit detections (retail typically <50 objects)
             )

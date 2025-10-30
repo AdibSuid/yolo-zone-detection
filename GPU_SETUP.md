@@ -14,8 +14,11 @@ python -m tools.check_gpu
 # Option A: Use existing model with auto GPU detection
 python -m src.main --camera 0 --mode custom
 
-# Option B: Use dedicated GPU mode
+# Option B: Use dedicated GPU mode (recommended)
 python -m src.main --camera 0 --mode custom_gpu
+
+# Option C: Test GPU performance first
+python -m tools.test_gpu
 ```
 
 ### 3. Export Model for GPU (Optional, for best performance)
@@ -26,18 +29,25 @@ python -m src.main --camera 0 --mode custom_gpu
 
 ## What Changed
 
-### 1. Device Configuration
-- Modified `src/detector.py` to accept device parameter
-- Added auto-detection of available devices
-- GPU uses FP16 precision, CPU uses FP32
+### 1. OpenVINO Device Configuration
+- Modified `src/detector.py` to properly configure OpenVINO for Intel GPU
+- Uses environment variables to control OpenVINO device selection
+- Always uses `device='cpu'` for Ultralytics (OpenVINO handles GPU internally)
+- Automatic fallback to CPU if GPU unavailable
 
-### 2. New Performance Mode
+### 2. Fixed Device Parameter Issue
+- The error was caused by passing `device='GPU'` to Ultralytics
+- Ultralytics only supports CUDA devices, not OpenVINO GPU
+- Solution: Use OpenVINO environment variables instead
+
+### 3. New Performance Mode
 - Added `custom_gpu` mode in `src/config.py`
-- Forces GPU usage for inference
+- Forces Intel GPU usage through OpenVINO configuration
 - Optimized settings for Intel GPU
 
 ### 3. New Scripts
 - `tools/check_gpu.py` - Check Intel GPU availability
+- `tools/test_gpu.py` - Test and benchmark GPU performance
 - `scripts/export_gpu.py` - Export model optimized for GPU
 
 ### 4. Command Line Options
@@ -92,7 +102,7 @@ The system automatically falls back to CPU if:
 
 After setup, you should see:
 ```
-🖥️  Target device: GPU
+� Configuring OpenVINO for Intel GPU...
 📱 Available OpenVINO devices: ['CPU', 'GPU']
 ✅ Intel GPU detected and will be used!
 ```
@@ -101,3 +111,16 @@ Expected output:
 - FPS should increase from ~1 to 3-8 FPS
 - Inference time should decrease significantly
 - GPU utilization visible in Task Manager
+- No "Invalid CUDA device" errors
+
+## Testing GPU Performance
+
+```bash
+# Run comprehensive GPU test
+python -m tools.test_gpu
+
+# This will:
+# 1. Check OpenVINO GPU availability
+# 2. Benchmark GPU vs CPU performance
+# 3. Show actual speedup numbers
+```

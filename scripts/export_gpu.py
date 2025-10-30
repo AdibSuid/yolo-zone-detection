@@ -41,7 +41,7 @@ def export_for_gpu():
         # Export with GPU optimization
         export_path = model.export(
             format="openvino",
-            half=True,          # FP16 for GPU acceleration
+            half=False,         # Let OpenVINO handle precision
             imgsz=640,
             batch=1,
             dynamic=False,      # Static shapes for better GPU performance
