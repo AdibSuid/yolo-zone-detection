@@ -10,7 +10,7 @@ class PerformanceMode:
     CUSTOM = {
         "name": "Custom YOLOv8",
         "model": "best_openvino_model/",
-        "resolution": (640, 640),  # Your training size
+        "resolution": (640, 480),  # Match camera's actual capability
         "frame_skip": 1,  # Process every frame
         "conf_threshold": 0.5,  # Your config: confidence=0.5
         "iou_threshold": 0.5,  # Your config: iou_threshold=0.5
