@@ -1,0 +1,50 @@
+{
+  "cameras": {
+    "cam-1": {
+      "enabled": false,
+      "source_type": "USB",
+      "path": "/dev/video4",
+      "stream_resolution": [
+        1280,
+        720
+      ],
+      "stream_fps": 30,
+      "stream_format": "YUY2"
+    },
+    "cam-2": {
+      "enabled": true,
+      "source_type": "USB",
+      "path": 0,
+      "stream_resolution": [
+        1920,
+        1080
+      ],
+      "stream_fps": 30,
+      "stream_format": "MJPG"
+    },
+    "cam-3": {
+      "enabled": false,
+      "source_type": "RTSP",
+      "path": "rtsp://192.168.1.100:554/stream",
+      "stream_resolution": [
+        1280,
+        720
+      ],
+      "stream_fps": 25,
+      "stream_format": "H264"
+    }
+  },
+  "mqtt": {
+    "broker": "localhost",
+    "port": 1883,
+    "username": "tapway-admin",
+    "password": "T@pw4yAdm1n",
+    "topic_prefix": "tapway/raw_event/metadata"
+  },
+  "detection": {
+    "site_id": "TAPWAY",
+    "subgroup_id": "Live Cam",
+    "model_name": "PeopleNet.2025.9.1",
+    "model_version": "0.0.1"
+  }
+}
