@@ -83,3 +83,6 @@ htmlcov/
 
 # Keep model metadata but ignore actual model files
 !metadata.yaml
+
+# Personal camera configuration (keep cameras_config_examples.json as template)
+cameras_config.json

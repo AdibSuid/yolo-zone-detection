@@ -26,7 +26,6 @@ try:
     WEB_DASHBOARD_AVAILABLE = True
 except ImportError:
     WEB_DASHBOARD_AVAILABLE = False
-    print("⚠️  Web dashboard dependencies not available")
 
 
 class ZoneDetectionApp:
@@ -411,25 +410,19 @@ Examples:
   # Using camera ID from config file
   python -m src.main --camera-id cam-1
 
-  # Legacy mode using camera index
-  python -m src.main --mode custom --camera 1
+  # Legacy mode using camera index  
+  python -m src.main --camera 1
 
   # With web dashboard enabled
   python -m src.main --camera-id cam-2 --web
 
   # Maximum performance (no display, no web)
   python -m src.main --camera-id cam-1 --no-display
-
-  # List all modes
-  python -m src.main --list-modes
-
-  # List enabled cameras
-  python -m src.main --list-cameras
         """
     )
     
     parser.add_argument("--mode", type=str, default="custom",
-                       choices=["custom", "retail_optimized", "ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
+                       choices=["custom"],
                        help="Performance mode (default: custom)")
     
     parser.add_argument("--camera", type=int, default=None,

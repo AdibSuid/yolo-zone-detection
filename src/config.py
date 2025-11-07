@@ -66,26 +66,19 @@ class PerformanceMode:
     @classmethod
     def get_mode(cls, mode_name):
         """Get performance mode configuration."""
-        modes = {
-            "custom": cls.CUSTOM,  # Your custom YOLOv8 model
-        }
-        return modes.get(mode_name, cls.CUSTOM)  # Default to custom
+        return cls.CUSTOM  # Only one mode supported now
     
     @classmethod
     def list_modes(cls):
-        """Print all available performance modes."""
-        print("📋 Available Performance Modes:")
+        """Print available performance mode."""
+        print("📋 Available Performance Mode:")
         print("=" * 60)
-        modes = [
-            ("custom", cls.CUSTOM),  # Show custom first
-        ]
-        for key, config in modes:
-            print(f"\n🔧 {key}:")
-            print(f"   📝 {config['name']}")
-            print(f"   📐 Resolution: {config['resolution'][0]}x{config['resolution'][1]}")
-            print(f"   ⏭️  Frame Skip: {config['frame_skip']}")
-            print(f"   🎚️  Confidence: {config['conf_threshold']}")
-            print(f"   🔧 Model: {config['model']}")
+        print(f"\n🔧 custom:")
+        print(f"   📝 {cls.CUSTOM['name']}")
+        print(f"   📐 Resolution: {cls.CUSTOM['resolution'][0]}x{cls.CUSTOM['resolution'][1]}")
+        print(f"   ⏭️  Frame Skip: {cls.CUSTOM['frame_skip']}")
+        print(f"   🎚️  Confidence: {cls.CUSTOM['conf_threshold']}")
+        print(f"   🔧 Model: {cls.CUSTOM['model']}")
 
 
 class CameraConfig:
