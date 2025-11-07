@@ -6,7 +6,6 @@ __author__ = "YOLO Detection System"
 from .config import PerformanceMode, CameraConfig, ZoneConfig, MQTTConfig, DisplayConfig
 from .camera import CameraManager
 from .detector import YOLODetector
-from .mqtt_client import MQTTPublisher
 from .performance import PerformanceMonitor
 
 __all__ = [
@@ -17,6 +16,5 @@ __all__ = [
     "DisplayConfig",
     "CameraManager",
     "YOLODetector",
-    "MQTTPublisher",
     "PerformanceMonitor",
 ]

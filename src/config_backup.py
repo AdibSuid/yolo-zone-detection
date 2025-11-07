@@ -1,50 +1,5 @@
 """Optimized configuration for retail object detection on Intel CPU."""
-import json
-import os
-from pathlib import Path
 import numpy as np
-
-
-class CameraConfigManager:
-    """Manages camera configurations from JSON file."""
-    
-    @staticmethod
-    def load_config(config_path="cameras_config.json"):
-        """Load camera configuration from JSON file."""
-        # Look for config file in project root
-        if not os.path.isabs(config_path):
-            project_root = Path(__file__).parent.parent
-            config_path = project_root / config_path
-        
-        try:
-            with open(config_path, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            print(f"⚠️  Camera config file not found: {config_path}")
-            return {"cameras": {}, "mqtt": {}, "detection": {}}
-        except json.JSONDecodeError as e:
-            print(f"⚠️  Invalid JSON in camera config: {e}")
-            return {"cameras": {}, "mqtt": {}, "detection": {}}
-    
-    @staticmethod
-    def get_enabled_cameras(config=None):
-        """Get list of enabled camera IDs."""
-        if config is None:
-            config = CameraConfigManager.load_config()
-        
-        enabled_cameras = []
-        for cam_id, cam_config in config.get("cameras", {}).items():
-            if cam_config.get("enabled", False):
-                enabled_cameras.append(cam_id)
-        return enabled_cameras
-    
-    @staticmethod
-    def get_camera_config(camera_id, config=None):
-        """Get configuration for specific camera."""
-        if config is None:
-            config = CameraConfigManager.load_config()
-        
-        return config.get("cameras", {}).get(camera_id, {})
 
 
 class PerformanceMode:
@@ -130,52 +85,16 @@ class ZoneConfig:
 
 
 class MQTTConfig:
-    """MQTT broker configuration with Tapway format support."""
+    """MQTT broker configuration."""
     
     DEFAULT_BROKER = "localhost"
     DEFAULT_PORT = 1883
-    TOPIC = "cv/zone_events"  # Legacy topic
+    TOPIC = "cv/zone_events"
     
     @staticmethod
-    def load_mqtt_config(config_path="cameras_config.json"):
-        """Load MQTT configuration from JSON file."""
-        config = CameraConfigManager.load_config(config_path)
-        mqtt_config = config.get("mqtt", {})
-        
-        return {
-            "broker": mqtt_config.get("broker", MQTTConfig.DEFAULT_BROKER),
-            "port": mqtt_config.get("port", MQTTConfig.DEFAULT_PORT),
-            "username": mqtt_config.get("username"),
-            "password": mqtt_config.get("password"),
-            "topic_prefix": mqtt_config.get("topic_prefix", "tapway/raw_event/metadata")
-        }
-    
-    @staticmethod
-    def get_client_id(mode, camera_id=None):
+    def get_client_id(mode):
         """Generate MQTT client ID."""
-        if camera_id:
-            return f"tapway_publisher_{camera_id}_{mode}"
         return f"cv_publisher_{mode}"
-    
-    @staticmethod
-    def get_topic(camera_id, config_path="cameras_config.json"):
-        """Get MQTT topic for specific camera."""
-        mqtt_config = MQTTConfig.load_mqtt_config(config_path)
-        topic_prefix = mqtt_config["topic_prefix"]
-        return f"{topic_prefix}/{camera_id}"
-    
-    @staticmethod
-    def get_detection_config(config_path="cameras_config.json"):
-        """Load detection configuration from JSON file."""
-        config = CameraConfigManager.load_config(config_path)
-        detection_config = config.get("detection", {})
-        
-        return {
-            "site_id": detection_config.get("site_id", "TAPWAY"),
-            "subgroup_id": detection_config.get("subgroup_id", "Live Cam"),
-            "model_name": detection_config.get("model_name", "PeopleNet.2025.9.1"),
-            "model_version": detection_config.get("model_version", "0.0.1")
-        }
 
 
 class DisplayConfig:

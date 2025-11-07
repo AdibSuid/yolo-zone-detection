@@ -1,12 +1,12 @@
 {
   "cameras": {
-    "cam-1": {
-      "enabled": false,
+    "cam1": {
+      "enabled": true,
       "source_type": "USB",
-      "path": "/dev/video4",
+      "path": 3,
       "stream_resolution": [
-        1280,
-        720
+        640,
+        480
       ],
       "stream_fps": 30,
       "stream_format": "YUY2"

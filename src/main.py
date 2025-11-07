@@ -14,10 +14,10 @@ warnings.filterwarnings('error')  # Convert warnings to exceptions
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
-from .config import PerformanceMode, ZoneConfig, DisplayConfig, CameraConfig
+from .config import PerformanceMode, ZoneConfig, DisplayConfig, CameraConfig, CameraConfigManager, MQTTConfig
 from .camera import CameraManager
 from .detector import YOLODetector
-from .mqtt_client import MQTTPublisher
+from .mqtt_client import TapwayMQTTPublisher, MQTTPublisher
 from .performance import PerformanceMonitor
 
 # Import web dashboard only if needed
@@ -32,26 +32,45 @@ except ImportError:
 class ZoneDetectionApp:
     """Optimized YOLO zone detection for Intel CPU."""
     
-    def __init__(self, mode, camera_index, mqtt_broker, mqtt_port, 
+    def __init__(self, mode, camera_index=None, camera_id=None, mqtt_broker=None, mqtt_port=None, 
                  enable_web=False, web_port=5000, enable_display=True):
         """Initialize optimized application.
         
         Args:
             mode: Performance mode name
-            camera_index: Camera device index
-            mqtt_broker: MQTT broker address
-            mqtt_port: MQTT broker port
+            camera_index: Camera device index (for legacy compatibility)
+            camera_id: Camera ID from config file (e.g., 'cam-1')
+            mqtt_broker: MQTT broker address (optional, loaded from config if not provided)
+            mqtt_port: MQTT broker port (optional, loaded from config if not provided)
             enable_web: Enable web dashboard (default False for performance)
             web_port: Web dashboard port
             enable_display: Enable OpenCV display window
         """
         self.config = PerformanceMode.get_mode(mode)
         self.mode = mode
+        self.camera_id = camera_id
         self.camera_index = camera_index
         self.enable_display = enable_display
         
+        # Load camera configuration if camera_id is provided
+        if camera_id:
+            camera_config = CameraConfigManager.get_camera_config(camera_id)
+            if not camera_config:
+                raise ValueError(f"Camera '{camera_id}' not found in configuration")
+            if not camera_config.get("enabled", False):
+                raise ValueError(f"Camera '{camera_id}' is disabled in configuration")
+            
+            # Get camera source from config
+            self.camera_source = camera_config.get("path", 0)
+            self.camera_resolution = tuple(camera_config.get("stream_resolution", [640, 480]))
+        else:
+            # Legacy mode: use camera_index
+            self.camera_source = camera_index or 0
+            self.camera_resolution = self.config['resolution']
+            self.camera_id = f"camera_{self.camera_source}"
+        
         # Initialize components
-        self.camera = CameraManager(camera_index, self.config['resolution'])
+        self.camera = CameraManager(self.camera_source, self.camera_resolution)
         
         iou_threshold = self.config.get('iou_threshold', 0.5)
         self.detector = YOLODetector(
@@ -60,7 +79,8 @@ class ZoneDetectionApp:
             iou_threshold
         )
         
-        self.mqtt = MQTTPublisher(mqtt_broker, mqtt_port, mode)
+        # Initialize MQTT with Tapway format
+        self.mqtt = TapwayMQTTPublisher(self.camera_id, mode)
         self.perf_monitor = PerformanceMonitor()
         
         # Web dashboard (optional, disabled by default)
@@ -388,17 +408,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Custom YOLOv8 model (web dashboard OFF by default)
+  # Using camera ID from config file
+  python -m src.main --camera-id cam-1
+
+  # Legacy mode using camera index
   python -m src.main --mode custom --camera 1
 
   # With web dashboard enabled
-  python -m src.main --mode custom --camera 1 --web
+  python -m src.main --camera-id cam-2 --web
 
   # Maximum performance (no display, no web)
-  python -m src.main --mode custom --camera 1 --no-display
+  python -m src.main --camera-id cam-1 --no-display
 
   # List all modes
   python -m src.main --list-modes
+
+  # List enabled cameras
+  python -m src.main --list-cameras
         """
     )
     
@@ -406,14 +432,17 @@ Examples:
                        choices=["custom", "retail_optimized", "ultra_fast", "maximum_fps", "balanced", "high_accuracy"],
                        help="Performance mode (default: custom)")
     
-    parser.add_argument("--camera", type=int, default=0,
-                       help="Camera index (default: 0)")
+    parser.add_argument("--camera", type=int, default=None,
+                       help="Camera index (legacy mode, use --camera-id instead)")
     
-    parser.add_argument("--mqtt-broker", type=str, default="localhost",
-                       help="MQTT broker address (default: localhost)")
+    parser.add_argument("--camera-id", type=str, default=None,
+                       help="Camera ID from config file (e.g., cam-1, cam-2)")
     
-    parser.add_argument("--mqtt-port", type=int, default=1883,
-                       help="MQTT broker port (default: 1883)")
+    parser.add_argument("--mqtt-broker", type=str, default=None,
+                       help="MQTT broker address (optional, loaded from config)")
+    
+    parser.add_argument("--mqtt-port", type=int, default=None,
+                       help="MQTT broker port (optional, loaded from config)")
     
     parser.add_argument("--web", action="store_true",
                        help="Enable web dashboard (DISABLED by default, reduces FPS by 20-30%%)")
@@ -427,10 +456,39 @@ Examples:
     parser.add_argument("--list-modes", action="store_true",
                        help="List all performance modes and exit")
     
+    parser.add_argument("--list-cameras", action="store_true",
+                       help="List all enabled cameras from config and exit")
+    
     args = parser.parse_args()
     
     if args.list_modes:
         PerformanceMode.list_modes()
+        return
+    
+    if args.list_cameras:
+        print("📋 Enabled Cameras from Configuration:")
+        print("=" * 50)
+        enabled_cameras = CameraConfigManager.get_enabled_cameras()
+        if enabled_cameras:
+            for camera_id in enabled_cameras:
+                camera_config = CameraConfigManager.get_camera_config(camera_id)
+                print(f"🎥 {camera_id}:")
+                print(f"   Source: {camera_config.get('path', 'N/A')}")
+                print(f"   Type: {camera_config.get('source_type', 'N/A')}")
+                print(f"   Resolution: {camera_config.get('stream_resolution', 'N/A')}")
+                print(f"   FPS: {camera_config.get('stream_fps', 'N/A')}")
+                print()
+        else:
+            print("⚠️  No enabled cameras found in configuration")
+        return
+    
+    # Validate camera arguments
+    if args.camera_id and args.camera:
+        print("⚠️  Cannot specify both --camera-id and --camera. Use --camera-id for config-based cameras.")
+        return
+    
+    if not args.camera_id and not args.camera:
+        print("⚠️  Must specify either --camera-id (from config) or --camera (index). Use --list-cameras to see available options.")
         return
     
     # Performance warning
@@ -442,6 +500,7 @@ Examples:
     app = ZoneDetectionApp(
         mode=args.mode,
         camera_index=args.camera,
+        camera_id=args.camera_id,
         mqtt_broker=args.mqtt_broker,
         mqtt_port=args.mqtt_port,
         enable_web=args.web,  # Disabled by default
