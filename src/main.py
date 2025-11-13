@@ -1,4 +1,30 @@
-"""Optimized main application for Intel CPU retail detection."""
+"""
+YOLO Zone Detection System - Main Application Module
+
+This module provides the core detection system that:
+- Captures video from USB/RTSP/HTTP cameras or files
+- Runs YOLOv8 object detection optimized with OpenVINO for Intel hardware
+- Tracks objects using ByteTrack algorithm
+- Monitors configurable detection zones
+- Publishes MQTT events in Tapway format
+- Optionally provides web dashboard visualization
+
+Usage:
+    # Using camera from configuration file
+    python -m src.main --camera-id cam1
+    
+    # With web dashboard
+    python -m src.main --camera-id cam1 --web
+    
+    # Using camera index directly
+    python -m src.main --camera 0
+    
+    # Maximum performance (no display)
+    python -m src.main --camera-id cam1 --no-display
+
+Author: YOLO Detection System
+License: MIT
+"""
 import sys
 import cv2
 import time

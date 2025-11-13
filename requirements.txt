@@ -1,20 +1,29 @@
+# ==========================================
+# YOLO Zone Detection System - Dependencies
+# ==========================================
+
 # Core ML/CV Libraries
-ultralytics==8.3.221
-openvino==2024.6.0
-opencv-python==4.11.0.86
-numpy>=1.24.0,<2.0.0
+# --------------------
+ultralytics==8.3.221      # YOLOv8 object detection framework
+openvino==2024.6.0        # Intel's deep learning inference optimization
+opencv-python==4.11.0.86  # Computer vision library
+numpy>=1.24.0,<2.0.0      # Numerical computing (v1.x for compatibility)
 
 # Object Detection & Tracking
-supervision==0.26.1
+# ---------------------------
+supervision==0.26.1       # Detection utilities and ByteTrack tracking
 
-# MQTT
-paho-mqtt==2.1.0
+# MQTT Communication
+# ------------------
+paho-mqtt==2.1.0          # MQTT client for event publishing
 
-# Web Dashboard (optional)
-flask==3.0.0
-flask-cors==4.0.0
-flask-socketio==5.3.5
-python-socketio==5.10.0
+# Web Dashboard (Optional - can be removed if not using --web flag)
+# ------------------------------------------------------------------
+flask==3.0.0              # Web framework
+flask-cors==4.0.0         # Cross-origin resource sharing
+flask-socketio==5.3.5     # WebSocket support for real-time updates
+python-socketio==5.10.0   # SocketIO client
 
 # Utilities
-tqdm>=4.66.0
+# ---------
+tqdm>=4.66.0              # Progress bars for model downloads

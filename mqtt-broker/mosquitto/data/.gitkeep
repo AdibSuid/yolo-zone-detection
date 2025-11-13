@@ -1,0 +1,2 @@
+# This file ensures the mqtt-broker/mosquitto/data directory is tracked by Git
+# The directory is needed for MQTT broker persistence

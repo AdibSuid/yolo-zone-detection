@@ -1,4 +1,24 @@
-"""Optimized configuration for retail object detection on Intel CPU."""
+"""
+Configuration Management Module
+
+This module handles all configuration for the YOLO Zone Detection System:
+- Camera settings (USB, RTSP, HTTP, FILE sources)
+- YOLO model parameters (confidence, IOU threshold)
+- Detection zone geometry
+- MQTT broker connection and authentication
+- Display and performance settings
+
+All configurations can be customized via cameras_config.json file.
+
+Configuration File Format:
+    {
+        "cameras": {...},       # Camera sources and settings
+        "mqtt": {...},          # MQTT broker configuration
+        "detection": {...}      # Detection parameters
+    }
+
+See cameras_config_examples.json for complete examples.
+"""
 import json
 import os
 from pathlib import Path
@@ -55,7 +75,7 @@ class PerformanceMode:
     CUSTOM = {
         "name": "Custom YOLOv8",
         "model": "best_openvino_model/",
-        "resolution": (640, 480),  # Match camera's actual capability
+        "resolution": (1080, 1920),  # Match camera's actual capability
         "frame_skip": 1,  # Process every frame
         "conf_threshold": 0.5,  # Your config: confidence=0.5
         "iou_threshold": 0.5,  # Your config: iou_threshold=0.5

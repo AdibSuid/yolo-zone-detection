@@ -1,4 +1,19 @@
-"""Setup script to initialize the YOLO detection system."""
+"""
+YOLO Zone Detection System - Automated Setup Script
+
+This script automates the initial setup process:
+1. Checks Python version compatibility (3.8+)
+2. Verifies virtual environment usage
+3. Installs required Python packages
+4. Guides model export if needed
+5. Optionally starts MQTT broker with Docker
+
+Usage:
+    python scripts/setup.py
+    
+    Or run directly:
+    python -m scripts.setup
+"""
 import os
 import sys
 import subprocess
