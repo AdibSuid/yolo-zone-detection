@@ -90,8 +90,8 @@ Edit `cameras_config.json` to match your camera setup. Example:
   "mqtt": {
     "broker": "localhost",
     "port": 1883,
-    "username": "tapway-admin",
-    "password": "T@pw4yAdm1n",
+    "username": "tapway",
+    "password": "tapway",
     "topic_prefix": "tapway/raw_event/metadata"
   }
 }
