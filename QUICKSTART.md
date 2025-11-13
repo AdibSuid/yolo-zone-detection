@@ -62,8 +62,8 @@ Create `cameras_config.json` (copy from `cameras_config_examples.json`):
   "mqtt": {
     "broker": "localhost",
     "port": 1883,
-    "username": "tapway-admin",
-    "password": "T@pw4yAdm1n",
+    "username": "tapway",
+    "password": "tapway",
     "topic_prefix": "tapway/raw_event/metadata"
   },
   "detection": {
