@@ -31,7 +31,7 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Deployment Guide
 
 ### 1. Clone Repository
 
@@ -65,37 +65,9 @@ python scripts/export.py
 
 This will create `best_openvino_model/` directory with optimized model files.
 
-### 4. Configure Cameras
+### 4. Start Docker Desktop
 
-Copy the example configuration and edit for your setup:
-
-```bash
-cp cameras_config_examples.json cameras_config.json
-```
-
-Edit `cameras_config.json` to match your camera setup. Example:
-
-```json
-{
-  "cameras": {
-    "cam1": {
-      "enabled": true,
-      "source_type": "USB",
-      "path": 0,
-      "stream_resolution": [640, 480],
-      "stream_fps": 30,
-      "stream_format": "MJPG"
-    }
-  },
-  "mqtt": {
-    "broker": "localhost",
-    "port": 1883,
-    "username": "tapway",
-    "password": "tapway",
-    "topic_prefix": "tapway/raw_event/metadata"
-  }
-}
-```
+Run the docker desktop app, make sure it's up & running before run the system.
 
 ### 5. Start MQTT Broker (Optional)
 
@@ -137,12 +109,6 @@ In a separate terminal:
 ```bash
 source venv/bin/activate
 python -m tools.mqtt_subscriber
-```
-
-### Command Line Options
-
-```bash
-python -m src.main --help
 ```
 
 **Available Options:**
@@ -188,7 +154,6 @@ yolo-zone-detection/
 │
 ├── best_openvino_model/         # Exported OpenVINO model (generated)
 ├── cameras_config.json          # Your camera configuration (gitignored)
-├── cameras_config_examples.json # Example configurations
 ├── requirements.txt             # Python dependencies
 └── README.md                    # This file
 ```
@@ -196,66 +161,6 @@ yolo-zone-detection/
 ---
 
 ## ⚙️ Configuration
-
-### Camera Configuration
-
-The `cameras_config.json` file supports multiple camera types:
-
-**USB Camera:**
-```json
-{
-  "cam-usb": {
-    "enabled": true,
-    "source_type": "USB",
-    "path": 0,
-    "stream_resolution": [1280, 720],
-    "stream_fps": 30,
-    "stream_format": "MJPG"
-  }
-}
-```
-
-**RTSP Camera:**
-```json
-{
-  "cam-rtsp": {
-    "enabled": true,
-    "source_type": "RTSP",
-    "path": "rtsp://username:password@192.168.1.100:554/stream",
-    "stream_resolution": [1920, 1080],
-    "stream_fps": 25,
-    "stream_format": "H264"
-  }
-}
-```
-
-**HTTP Stream:**
-```json
-{
-  "cam-http": {
-    "enabled": true,
-    "source_type": "HTTP",
-    "path": "http://192.168.1.101:8080/video",
-    "stream_resolution": [640, 480],
-    "stream_fps": 15,
-    "stream_format": "MJPG"
-  }
-}
-```
-
-**Video File:**
-```json
-{
-  "cam-file": {
-    "enabled": true,
-    "source_type": "FILE",
-    "path": "./videos/sample.mp4",
-    "stream_resolution": [1280, 720],
-    "stream_fps": 30,
-    "stream_format": "MP4"
-  }
-}
-```
 
 ### Detection Zone Configuration
 
@@ -269,7 +174,7 @@ class ZoneConfig:
 
 ### MQTT Event Format
 
-Events are published in Tapway format:
+Events are published in this format:
 
 ```json
 {
