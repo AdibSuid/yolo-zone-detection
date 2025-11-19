@@ -3,10 +3,10 @@
     "cam1": {
       "enabled": true,
       "source_type": "USB",
-      "path": 3,
+      "path": 0,
       "stream_resolution": [
-        640,
-        480
+        1920,
+        1080
       ],
       "stream_fps": 30,
       "stream_format": "YUY2"

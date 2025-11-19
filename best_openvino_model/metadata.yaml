@@ -1,6 +1,6 @@
 description: Ultralytics best model trained on dataset_cfg.yaml
 author: Ultralytics
-date: '2025-11-05T21:12:05.263883'
+date: '2025-11-20T06:32:51.227349'
 version: 8.3.221
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
@@ -8,8 +8,8 @@ stride: 32
 task: detect
 batch: 1
 imgsz:
-- 480
-- 640
+- 1088
+- 1920
 names:
   0: retail_object
 args:

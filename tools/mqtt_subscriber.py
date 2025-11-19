@@ -7,7 +7,8 @@ from datetime import datetime
 
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_TOPIC = "cv/zone_events"
+# Subscribe to all Tapway zone events for cam1 (or use "+" for all cameras)
+MQTT_TOPIC = "tapway/raw_event/metadata/cam1"
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
@@ -26,18 +27,25 @@ def on_message(client, userdata, msg):
     """Callback when message received."""
     try:
         payload = json.loads(msg.payload.decode())
-        
-        timestamp = datetime.fromtimestamp(payload.get('timestamp', time.time()))
-        
+
+        # Tapway event uses ISO8601 string for timestamp
+        ts_raw = payload.get('timestamp', None)
+        if ts_raw:
+            try:
+                timestamp = datetime.fromisoformat(ts_raw.replace('Z', '+00:00'))
+            except Exception:
+                timestamp = datetime.now()
+        else:
+            timestamp = datetime.now()
+
         print(f"📅 {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"🎯 Event: {payload.get('event', 'unknown')}")
-        print(f"🏷️  Object: {payload.get('class_name', 'N/A')}")
-        print(f"🆔 Tracker ID: {payload.get('tracker_id', 'N/A')}")
-        print(f"📊 Confidence: {payload.get('confidence', 0):.2f}")
-        print(f"⚡ FPS: {payload.get('fps', 0):.1f}")
-        print(f"🔧 Mode: {payload.get('mode', 'N/A')}")
+        # Print Tapway event details
+        print(f"📡 Device ID: {payload.get('device_id', 'N/A')}")
+        print(f"🆔 Unique Event ID: {payload.get('uniqueEventID', 'N/A')}")
+        print(f"🏷️  InOut: {payload.get('inout', {})}")
+        print(f"🔧 Site: {payload.get('siteID', 'N/A')} | Subgroup: {payload.get('subgroupID', 'N/A')}")
         print("-" * 60)
-        
+
     except json.JSONDecodeError:
         print(f"⚠️  Received non-JSON message: {msg.payload.decode()}")
     except Exception as e:
