@@ -35,6 +35,21 @@ class TapwayMQTTPublisher:
         self.client = None
         self.connected = False
     
+    def _on_connect(self, client, userdata, flags, rc, properties=None):
+        """Callback when connected to MQTT broker."""
+        if rc == 0:
+            self.connected = True
+            print(f"✅ MQTT connection established")
+        else:
+            self.connected = False
+            print(f"⚠️  MQTT connection failed with code: {rc}")
+    
+    def _on_disconnect(self, client, userdata, rc, properties=None):
+        """Callback when disconnected from MQTT broker."""
+        self.connected = False
+        if rc != 0:
+            print(f"⚠️  MQTT unexpected disconnection (code: {rc}). Reconnecting...")
+    
     def connect(self):
         """Connect to MQTT broker with authentication."""
         try:
@@ -44,12 +59,23 @@ class TapwayMQTTPublisher:
                 callback_api_version=mqtt.CallbackAPIVersion.VERSION2
             )
             
+            # Set callbacks for connection management
+            self.client.on_connect = self._on_connect
+            self.client.on_disconnect = self._on_disconnect
+            
             # Set authentication if provided
             if self.username and self.password:
                 self.client.username_pw_set(self.username, self.password)
                 print(f"🔐 MQTT authentication set for user: {self.username}")
             
-            self.client.connect(self.broker, self.port)
+            # Enable automatic reconnection
+            self.client.reconnect_delay_set(min_delay=1, max_delay=120)
+            
+            self.client.connect(self.broker, self.port, keepalive=60)
+            
+            # Start network loop in background thread
+            self.client.loop_start()
+            
             self.connected = True
             print(f"✅ MQTT connected: {self.broker}:{self.port}")
             print(f"📡 Publishing to topic: {self.topic}")
@@ -100,8 +126,18 @@ class TapwayMQTTPublisher:
     
     def publish_zone_event(self, tracker_id, class_id, class_name, confidence, fps, zone_name="zone_1"):
         """Publish detection event when object is in zone using Tapway format."""
-        if not self.connected or self.client is None:
+        if self.client is None:
+            print("⚠️  MQTT client not initialized")
             return False
+        
+        # Check if connected, if not, try to reconnect
+        if not self.connected:
+            print("⚠️  MQTT not connected, attempting reconnection...")
+            try:
+                self.connect()
+            except Exception as e:
+                print(f"⚠️  Reconnection failed: {e}")
+                return False
         
         try:
             # Prepare detection data
@@ -117,23 +153,31 @@ class TapwayMQTTPublisher:
             
             # Publish to camera-specific topic
             message = json.dumps(event_payload, indent=2)
-            result = self.client.publish(self.topic, message)
+            result = self.client.publish(self.topic, message, qos=1)
+            
+            # Wait for message to be published (with timeout)
+            result.wait_for_publish(timeout=1.0)
             
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 print(f"📡 {class_name} (ID:{tracker_id}) | Conf: {confidence:.2f} | Topic: {self.topic}")
                 return True
             else:
                 print(f"⚠️  MQTT publish failed with return code: {result.rc}")
+                self.connected = False
                 return False
                 
         except Exception as e:
             print(f"⚠️  MQTT publish error: {e}")
+            self.connected = False
             return False
     
     def disconnect(self):
         """Disconnect from MQTT broker."""
-        if self.client is not None and self.connected:
-            self.client.disconnect()
+        if self.client is not None:
+            # Stop the background network loop
+            self.client.loop_stop()
+            if self.connected:
+                self.client.disconnect()
             self.connected = False
             print(f"📡 MQTT disconnected from {self.broker}:{self.port}")
 
