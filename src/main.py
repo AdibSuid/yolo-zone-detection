@@ -258,26 +258,31 @@ class ZoneDetectionApp:
         return frame
     
     def _publish_zone_events(self, detections, zone_mask):
-        """Publish MQTT events for detections in zone."""
+        """Publish MQTT events only when object enters the zone (entry event)."""
         if not any(zone_mask):
+            # No objects in zone, clear tracked set
+            self.objects_in_zone.clear()
             return
-        
+
         fps = self.perf_monitor.get_fps()
-        
+        current_in_zone = set()
+
         for det_idx, inside_zone in enumerate(zone_mask):
             if inside_zone:
                 tracker_id = int(detections.tracker_id[det_idx])
                 class_id = int(detections.class_id[det_idx])
                 confidence = float(detections.confidence[det_idx])
                 class_name = self.detector.get_class_name(class_id)
-                
-                self.mqtt.publish_zone_event(
-                    tracker_id, class_id, class_name, confidence, fps
-                )
-                
-                # Update web dashboard
-                if self.enable_web and self.web_dashboard:
-                    if tracker_id not in self.objects_in_zone:
+                current_in_zone.add(tracker_id)
+
+                # Only publish if tracker_id was not previously in zone (entry event)
+                if tracker_id not in self.objects_in_zone:
+                    self.mqtt.publish_zone_event(
+                        tracker_id, class_id, class_name, confidence, fps
+                    )
+
+                    # Update web dashboard
+                    if self.enable_web and self.web_dashboard:
                         direction = "IN"
                         bbox = detections.xyxy[det_idx]
                         x1, y1, x2, y2 = map(int, bbox)
@@ -286,7 +291,8 @@ class ZoneDetectionApp:
                             self.web_dashboard.add_detection(
                                 class_name, confidence, direction, cropped_img
                             )
-                        self.objects_in_zone.add(tracker_id)
+        # Update tracked set for next frame
+        self.objects_in_zone = current_in_zone
     
     def _add_overlay(self, frame, inference_time, ran_inference, detections):
         """Add performance overlay to frame."""
