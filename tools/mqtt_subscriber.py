@@ -52,7 +52,7 @@ def on_message(client, userdata, msg):
         print(f"❌ Error processing message: {e}")
 
 
-def on_disconnect(client, userdata, rc, properties=None):
+def on_disconnect(client, userdata, rc, *args, **kwargs):
     """Callback when disconnected from broker."""
     print(f"🔌 Disconnected from MQTT broker")
 

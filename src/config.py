@@ -191,6 +191,32 @@ class MQTTConfig:
         }
 
 
+class DwellConfig:
+    """Dwell time configuration for zone detection."""
+    
+    DEFAULT_DWELL_TIME_SECONDS = 1.0  # 1 second dwell time
+    DEFAULT_FPS = 30  # Assumed FPS for frame calculations
+    
+    @staticmethod
+    def get_dwell_frames(fps=None, dwell_time_seconds=None):
+        """Calculate dwell time in frames based on FPS."""
+        fps = fps or DwellConfig.DEFAULT_FPS
+        dwell_time = dwell_time_seconds or DwellConfig.DEFAULT_DWELL_TIME_SECONDS
+        return int(fps * dwell_time)
+    
+    @staticmethod
+    def load_dwell_config(config_path="cameras_config.json"):
+        """Load dwell configuration from JSON file."""
+        config = CameraConfigManager.load_config(config_path)
+        detection_config = config.get("detection", {})
+        
+        return {
+            "dwell_time_seconds": detection_config.get("dwell_time_seconds", DwellConfig.DEFAULT_DWELL_TIME_SECONDS),
+            "proximity_threshold": detection_config.get("proximity_threshold", 50),  # pixels
+            "max_missing_frames": detection_config.get("max_missing_frames", 10)
+        }
+
+
 class DisplayConfig:
     """Display window configuration."""
     
