@@ -28,17 +28,23 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
 
-        # Tapway event uses ISO8601 string for timestamp
+        # Get current time for display
+        current_time = datetime.now()
+        
+        # Try to parse event timestamp for comparison
         ts_raw = payload.get('timestamp', None)
         if ts_raw:
             try:
-                timestamp = datetime.fromisoformat(ts_raw.replace('Z', '+00:00'))
+                event_timestamp = datetime.fromisoformat(ts_raw.replace('Z', '+00:00'))
+                # If event has timezone info, convert to local
+                if event_timestamp.tzinfo:
+                    event_timestamp = event_timestamp.astimezone()
             except Exception:
-                timestamp = datetime.now()
+                event_timestamp = current_time
         else:
-            timestamp = datetime.now()
+            event_timestamp = current_time
 
-        print(f"📅 {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"📅 {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         # Print Tapway event details
         print(f"📡 Device ID: {payload.get('device_id', 'N/A')}")
         print(f"🆔 Unique Event ID: {payload.get('uniqueEventID', 'N/A')}")

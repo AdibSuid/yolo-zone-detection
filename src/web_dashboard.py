@@ -75,7 +75,7 @@ class WebDashboard:
             self.total_object_count += 1
             
             now = datetime.now()
-            timestamp = now.strftime("%Y/%m/%d %H:%M:%S")
+            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")  # Match MQTT subscriber format
             timestamp_raw = now.isoformat()
             
             image_base64 = None

@@ -87,7 +87,7 @@ class TapwayMQTTPublisher:
     
     def create_tapway_event(self, detections_data, zone_name="zone_1"):
         """Create Tapway-formatted event message."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now().isoformat()
         unique_event_id = str(uuid.uuid4()).replace('-', '').upper()[:10]
         
         # Get camera resolution from config
