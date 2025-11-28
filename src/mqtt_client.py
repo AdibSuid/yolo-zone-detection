@@ -44,7 +44,7 @@ class TapwayMQTTPublisher:
             self.connected = False
             print(f"⚠️  MQTT connection failed with code: {rc}")
     
-    def _on_disconnect(self, client, userdata, rc, properties=None):
+    def _on_disconnect(self, client, userdata, rc, *args, **kwargs):
         """Callback when disconnected from MQTT broker."""
         self.connected = False
         if rc != 0:
@@ -135,6 +135,7 @@ class TapwayMQTTPublisher:
             print("⚠️  MQTT not connected, attempting reconnection...")
             try:
                 self.connect()
+                time.sleep(0.5)  # Give connection time to establish
             except Exception as e:
                 print(f"⚠️  Reconnection failed: {e}")
                 return False
@@ -156,10 +157,13 @@ class TapwayMQTTPublisher:
             result = self.client.publish(self.topic, message, qos=1)
             
             # Wait for message to be published (with timeout)
-            result.wait_for_publish(timeout=1.0)
+            try:
+                result.wait_for_publish(timeout=2.0)  # Increased timeout
+            except Exception as timeout_error:
+                print(f"⚠️  MQTT publish timeout: {timeout_error}")
+                return False
             
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
-                print(f"📡 {class_name} (ID:{tracker_id}) | Conf: {confidence:.2f} | Topic: {self.topic}")
                 return True
             else:
                 print(f"⚠️  MQTT publish failed with return code: {result.rc}")

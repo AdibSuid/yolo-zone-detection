@@ -139,7 +139,17 @@ class ZoneDetectionApp:
         self.running = False
         self.frame_idx = 0
         self.failed_reads = 0
-        self.objects_in_zone = set()
+        
+        # Enhanced object tracking for zone detection
+        self.objects_in_zone = set()  # tracker_ids currently in zone
+        self.object_states = {}  # tracker_id -> {"center": (x,y), "class_id": int, "last_seen": frame_idx}
+        self.published_objects = set()  # tracker_ids that already published entry event
+        self.proximity_threshold = 50  # pixels for matching lost objects
+        self.max_missing_frames = 10  # frames to keep object state after disappearing
+        
+        # Staging area for 1-second delay before MQTT publishing
+        self.staging_objects = {}  # tracker_id -> {"first_seen": frame_idx, "last_in_zone": frame_idx, "data": {...}}
+        self.required_stability_frames = 30  # ~1 second at 30 FPS
         
         # Performance tracking
         self.inference_times = []
@@ -258,41 +268,231 @@ class ZoneDetectionApp:
         return frame
     
     def _publish_zone_events(self, detections, zone_mask):
-        """Publish MQTT events only when object enters the zone (entry event)."""
-        if not any(zone_mask):
-            # No objects in zone, clear tracked set
-            self.objects_in_zone.clear()
-            return
-
+        """Publish MQTT events with enhanced tracking and 1-second delay."""
         fps = self.perf_monitor.get_fps()
         current_in_zone = set()
-
-        for det_idx, inside_zone in enumerate(zone_mask):
-            if inside_zone:
-                tracker_id = int(detections.tracker_id[det_idx])
-                class_id = int(detections.class_id[det_idx])
-                confidence = float(detections.confidence[det_idx])
-                class_name = self.detector.get_class_name(class_id)
-                current_in_zone.add(tracker_id)
-
-                # Only publish if tracker_id was not previously in zone (entry event)
-                if tracker_id not in self.objects_in_zone:
-                    self.mqtt.publish_zone_event(
-                        tracker_id, class_id, class_name, confidence, fps
-                    )
-
-                    # Update web dashboard
-                    if self.enable_web and self.web_dashboard:
-                        direction = "IN"
-                        bbox = detections.xyxy[det_idx]
-                        x1, y1, x2, y2 = map(int, bbox)
-                        if hasattr(self, '_last_frame'):
-                            cropped_img = self._last_frame[y1:y2, x1:x2]
-                            self.web_dashboard.add_detection(
-                                class_name, confidence, direction, cropped_img
-                            )
-        # Update tracked set for next frame
+        current_states = {}
+        
+        # Clean up old missing objects and staging
+        self._cleanup_missing_objects()
+        self._cleanup_staging_objects()
+        
+        if any(zone_mask):
+            for det_idx, inside_zone in enumerate(zone_mask):
+                if inside_zone:
+                    tracker_id = int(detections.tracker_id[det_idx])
+                    class_id = int(detections.class_id[det_idx])
+                    confidence = float(detections.confidence[det_idx])
+                    class_name = self.detector.get_class_name(class_id)
+                    
+                    # Calculate object center
+                    bbox = detections.xyxy[det_idx]
+                    x1, y1, x2, y2 = bbox
+                    center_x, center_y = (x1 + x2) / 2, (y1 + y2) / 2
+                    
+                    current_in_zone.add(tracker_id)
+                    current_states[tracker_id] = {
+                        "center": (center_x, center_y),
+                        "class_id": class_id,
+                        "last_seen": self.frame_idx
+                    }
+                    
+                    # Handle staging for 1-second delay
+                    self._handle_object_staging(tracker_id, class_id, class_name, confidence, bbox, center_x, center_y, fps)
+        
+        # Process staged objects ready for publishing
+        self._process_staged_objects()
+        
+        # Update tracking state
         self.objects_in_zone = current_in_zone
+        self.object_states.update(current_states)
+        
+        # Don't immediately remove objects from published set - let cleanup handle it
+        # This prevents duplicate events when objects temporarily lose tracking
+    
+    def _should_publish_entry(self, tracker_id, center_x, center_y, class_id):
+        """Determine if an object entry should trigger MQTT publication."""
+        # If already published, don't publish again
+        if tracker_id in self.published_objects:
+            return False
+        
+        # Check if this might be a re-tracked existing object (spatial proximity check)
+        for existing_id, state in self.object_states.items():
+            if existing_id in self.published_objects:
+                # Calculate distance to existing published object
+                existing_x, existing_y = state["center"]
+                distance = ((center_x - existing_x) ** 2 + (center_y - existing_y) ** 2) ** 0.5
+                
+                # If very close to a recently published object of same class, likely same object
+                if distance < self.proximity_threshold and state["class_id"] == class_id:
+                    frames_since_seen = self.frame_idx - state["last_seen"]
+                    if frames_since_seen <= self.max_missing_frames:
+                        print(f"🔄 Tracking continuity: ID {tracker_id} matches published object {existing_id} (distance: {distance:.1f}px)")
+                        # Mark as published to prevent duplicate
+                        self.published_objects.add(tracker_id)
+                        return False
+        
+        # New genuine entry - not previously published and not near any published object
+        return True
+    
+    def _cleanup_missing_objects(self):
+        """Remove old object states to prevent memory buildup."""
+        cutoff_frame = self.frame_idx - self.max_missing_frames * 2
+        to_remove = []
+        
+        for obj_id, state in self.object_states.items():
+            if state["last_seen"] < cutoff_frame:
+                to_remove.append(obj_id)
+        
+        for obj_id in to_remove:
+            self.object_states.pop(obj_id, None)
+            self.published_objects.discard(obj_id)
+        
+        # Also remove published objects that haven't been seen for a long time
+        published_to_remove = []
+        for obj_id in self.published_objects:
+            if obj_id not in self.object_states:
+                # Object not in current states - it's been gone for max_missing_frames * 2
+                published_to_remove.append(obj_id)
+        
+        for obj_id in published_to_remove:
+            self.published_objects.discard(obj_id)
+    
+    def _handle_object_staging(self, tracker_id, class_id, class_name, confidence, bbox, center_x, center_y, fps):
+        """Handle object staging for 1-second delay before MQTT publishing."""
+        # Check if this is a genuine new entry
+        should_stage = self._should_stage_entry(tracker_id, center_x, center_y, class_id)
+        
+        if should_stage:
+            # Add to staging area if not already there
+            if tracker_id not in self.staging_objects:
+                self.staging_objects[tracker_id] = {
+                    "first_seen": self.frame_idx,
+                    "last_in_zone": self.frame_idx,
+                    "data": {
+                        "tracker_id": tracker_id,
+                        "class_id": class_id,
+                        "class_name": class_name,
+                        "confidence": confidence,
+                        "bbox": bbox,
+                        "center": (center_x, center_y),
+                        "fps": fps
+                    }
+                }
+                print(f"⏰ Staging: {class_name} (ID:{tracker_id}) - waiting for 1s in zone...")
+        
+        # Update staging data for objects already being tracked
+        if tracker_id in self.staging_objects:
+            # Update last seen in zone timestamp
+            self.staging_objects[tracker_id]["last_in_zone"] = self.frame_idx
+            # Update object data
+            self.staging_objects[tracker_id]["data"].update({
+                "confidence": confidence,
+                "bbox": bbox,
+                "center": (center_x, center_y)
+            })
+    
+    def _should_stage_entry(self, tracker_id, center_x, center_y, class_id):
+        """Determine if an object should be staged for delayed publication."""
+        # If already published, don't stage again
+        if tracker_id in self.published_objects:
+            return False
+            
+        # If already staging, don't stage again
+        if tracker_id in self.staging_objects:
+            return False
+        
+        # Check if this might be a re-tracked existing object (spatial proximity check)
+        for existing_id, state in self.object_states.items():
+            if existing_id in self.published_objects:
+                # Calculate distance to existing published object
+                existing_x, existing_y = state["center"]
+                distance = ((center_x - existing_x) ** 2 + (center_y - existing_y) ** 2) ** 0.5
+                
+                # If very close to a recently published object of same class, likely same object
+                if distance < self.proximity_threshold and state["class_id"] == class_id:
+                    frames_since_seen = self.frame_idx - state["last_seen"]
+                    if frames_since_seen <= self.max_missing_frames:
+                        print(f"🔄 Tracking continuity: ID {tracker_id} matches published object {existing_id} (distance: {distance:.1f}px)")
+                        # Mark as published to prevent duplicate
+                        self.published_objects.add(tracker_id)
+                        return False
+        
+        # New genuine entry - should be staged for delay
+        return True
+    
+    def _process_staged_objects(self):
+        """Process staged objects that have been continuously in zone for 1 second."""
+        objects_to_publish = []
+        objects_to_remove = []
+        
+        for tracker_id, staged_data in self.staging_objects.items():
+            frames_since_first_seen = self.frame_idx - staged_data["first_seen"]
+            frames_since_last_in_zone = self.frame_idx - staged_data["last_in_zone"]
+            
+            # Check if object left zone (not seen in current frame)
+            if tracker_id not in self.objects_in_zone:
+                # Object left zone - remove from staging
+                print(f"❌ Unstaged: Object (ID:{tracker_id}) left zone after {frames_since_first_seen} frames")
+                objects_to_remove.append(tracker_id)
+                continue
+            
+            # Check if object has been continuously in zone for required frames
+            if (frames_since_first_seen >= self.required_stability_frames and 
+                frames_since_last_in_zone == 0):  # Still in zone this frame
+                objects_to_publish.append(tracker_id)
+        
+        # Remove objects that left the zone
+        for tracker_id in objects_to_remove:
+            del self.staging_objects[tracker_id]
+        
+        # Publish stable objects
+        for tracker_id in objects_to_publish:
+            staged_data = self.staging_objects[tracker_id]
+            data = staged_data["data"]
+            
+            # Mark as published
+            self.published_objects.add(tracker_id)
+            
+            # Publish MQTT event
+            success = self.mqtt.publish_zone_event(
+                data["tracker_id"], data["class_id"], data["class_name"], 
+                data["confidence"], data["fps"]
+            )
+            
+            if success:
+                print(f"🎯 Delayed Entry Event: {data['class_name']} (ID:{tracker_id}) - Confidence: {data['confidence']:.2f} [Stable for {frames_since_first_seen} frames]")
+            
+                # Update web dashboard
+                if self.enable_web and self.web_dashboard:
+                    direction = "IN"
+                    x1, y1, x2, y2 = map(int, data["bbox"])
+                    if hasattr(self, '_last_frame'):
+                        cropped_img = self._last_frame[y1:y2, x1:x2]
+                        self.web_dashboard.add_detection(
+                            data["class_name"], data["confidence"], direction, cropped_img
+                        )
+            
+            # Remove from staging
+            del self.staging_objects[tracker_id]
+    
+    def _cleanup_staging_objects(self):
+        """Clean up staging objects that are no longer in zone."""
+        # This is now handled in _process_staged_objects to avoid double processing
+        # Only clean up objects that have been staging for an excessive amount of time
+        staging_to_remove = []
+        
+        for tracker_id, staged_data in self.staging_objects.items():
+            frames_since_first_seen = self.frame_idx - staged_data["first_seen"]
+            frames_since_last_in_zone = self.frame_idx - staged_data["last_in_zone"]
+            
+            # Remove objects that haven't been in zone for too long (safety cleanup)
+            if frames_since_last_in_zone > self.max_missing_frames:
+                staging_to_remove.append(tracker_id)
+        
+        for tracker_id in staging_to_remove:
+            print(f"🧹 Cleanup staging: Object (ID:{tracker_id}) absent from zone too long")
+            del self.staging_objects[tracker_id]
     
     def _add_overlay(self, frame, inference_time, ran_inference, detections):
         """Add performance overlay to frame."""
@@ -309,10 +509,12 @@ class ZoneDetectionApp:
             cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 
                        0.6, (0, 255, 0), 2)
             
-            # Object count
+            # Object count and tracking info
             num_objects = len(detections) if detections is not None else 0
-            cv2.putText(frame, f"Objects: {num_objects} | Cam: {self.camera_index} | Mode: {self.mode}", 
+            cv2.putText(frame, f"Objects: {num_objects} | In Zone: {len(self.objects_in_zone)} | Staging: {len(self.staging_objects)} | Published: {len(self.published_objects)}", 
                        (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(frame, f"Cam: {self.camera_index} | Mode: {self.mode}", 
+                       (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
         except Exception as e:
             print(f"Overlay error: {e}")
     
@@ -429,6 +631,8 @@ class ZoneDetectionApp:
         print(f"   Average inference: {avg_inference*1000:.1f}ms")
         print(f"   Resolution: {width}x{height}")
         print(f"   Objects tracked: {len(self.objects_in_zone)}")
+        print(f"   Published objects: {len(self.published_objects)}")
+        print(f"   Object states: {len(self.object_states)}")
         print("=" * 60)
 
 

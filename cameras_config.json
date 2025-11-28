@@ -2,8 +2,19 @@
   "cameras": {
     "cam1": {
       "enabled": true,
+      "source_type": "FILE",
+      "path": "test_videos/WIN_20250722_20_58_48_Pro.mp4",
+      "stream_resolution": [
+        1920,
+        1080
+      ],
+      "stream_fps": 30,
+      "stream_format": "MP4"
+    },
+    "cam2": {
+      "enabled": true,
       "source_type": "USB",
-      "path": 0,
+      "path": 3,
       "stream_resolution": [
         1920,
         1080
@@ -11,18 +22,7 @@
       "stream_fps": 30,
       "stream_format": "YUY2"
     },
-    "cam-2": {
-      "enabled": true,
-      "source_type": "USB",
-      "path": 0,
-      "stream_resolution": [
-        1920,
-        1080
-      ],
-      "stream_fps": 30,
-      "stream_format": "MJPG"
-    },
-    "cam-3": {
+    "cam3": {
       "enabled": false,
       "source_type": "RTSP",
       "path": "rtsp://192.168.1.100:554/stream",

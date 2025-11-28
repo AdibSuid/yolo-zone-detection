@@ -12,17 +12,26 @@ class CameraManager:
         self.camera_index = camera_index
         self.resolution = resolution
         self.cap = None
+        self.is_file = False
         
     def initialize(self):
         """Initialize and configure camera for optimal performance."""
         print(f"📷 Opening camera {self.camera_index}...")
         
-        # Use DirectShow for Windows (CAP_DSHOW) for better performance
-        self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+        # Determine if camera_index is a file path or camera device
+        if isinstance(self.camera_index, str) and ('/' in self.camera_index or '\\' in self.camera_index):
+            # Video file - don't use DirectShow backend
+            self.cap = cv2.VideoCapture(self.camera_index)
+            self.is_file = True
+        else:
+            # Camera device - use DirectShow for Windows for better performance  
+            self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+            self.is_file = False
         
         if not self.cap.isOpened():
             print(f"❌ Failed to open camera {self.camera_index}")
-            print("💡 Run: python -m tools.find_cameras")
+            if not self.is_file:
+                print("💡 Run: python -m tools.find_cameras")
             return False
         
         # Verify camera works
@@ -47,6 +56,11 @@ class CameraManager:
     
     def _configure_camera_optimized(self):
         """Apply optimized camera settings for Intel CPU inference."""
+        if self.is_file:
+            # For video files, don't try to set camera properties
+            print("📹 Video file loaded - skipping camera configuration")
+            return
+        
         frame_width, frame_height = self.resolution
         
         # Set resolution
