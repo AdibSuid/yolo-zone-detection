@@ -149,7 +149,7 @@ class ZoneDetectionApp:
         
         # Staging area for 1-second delay before MQTT publishing
         self.staging_objects = {}  # tracker_id -> {"first_seen": frame_idx, "last_in_zone": frame_idx, "data": {...}}
-        self.required_stability_frames = 30  # ~1 second at 30 FPS
+        self.required_stability_frames = 5  # ~1 second at 30 FPS
         
         # Performance tracking
         self.inference_times = []
@@ -379,7 +379,7 @@ class ZoneDetectionApp:
                         "fps": fps
                     }
                 }
-                print(f"⏰ Staging: {class_name} (ID:{tracker_id}) - waiting for 1s in zone...")
+                print(f"⏰ Staging: {class_name} (ID:{tracker_id}) - waiting for 0.3s in zone...")
         
         # Update staging data for objects already being tracked
         if tracker_id in self.staging_objects:

@@ -37,7 +37,7 @@ kiosk_state = KioskState()
 # MQTT Configuration
 MQTT_BROKER = "localhost" 
 MQTT_PORT = 1883
-MQTT_TOPIC = "tapway/raw_event/metadata/#"
+MQTT_TOPIC = "tapway/raw_event/metadata/cam2"
 
 def on_mqtt_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -120,60 +120,62 @@ def health():
 
 @app.post("/api/handshake")
 async def handle_kiosk_status(request: KioskRequest):
+    """
+    Handle kiosk status updates based on processid
+    """
     process_id = request.processid
 
     try:
         if process_id == 0:
+            # Health Check
             logger.info("Health check requested")
             return HealthResponse()
 
         elif process_id == 1:
+            # Sales Start - Start subscribing to MQTT
             logger.info(f"Sales start for kiosk {request.kioskid}, store {request.storeno}")
             kiosk_state.is_subscribing = True
             kiosk_state.reset_counter()
             return HealthResponse()
 
         elif process_id == 2:
+            # Product Scanning - Return detection status
             logger.info(f"Product scanning for item {request.itemcode}")
+
             current_counter = kiosk_state.get_counter()
             logger.info(f"Current inference counter: {current_counter}")
 
-            detect_type = 0
+            # Determine DetectType based on counter
             if current_counter == 1:
-                detect_type = 0 # Good scan
+                # Good scan
+                detect_type = 0
                 kiosk_state.reset_counter()
                 logger.info("Good scan detected")
             elif current_counter >= 2:
-                detect_type = 1 # Missed scan
+                # Missed scan
+                detect_type = 1
                 kiosk_state.reset_counter()
                 logger.info("Missed scan detected")
-            else: 
-                detect_type = 0 # No inference, assume good scan
+            else:  # counter == 0
+                # Inference missed it, but return good scan for now
+                detect_type = 0
                 logger.info("No inference detected, returning good scan")
 
             return DetectionResponse(DetectType=detect_type)
-
+        
         elif process_id == 3:
+	        # Pay - Stop subscribing to MQTT
             logger.info(f"Payment started for kiosk {request.kioskid}")
             kiosk_state.is_subscribing = False
             current_counter = kiosk_state.get_counter()
-
-            if current_counter > 1:
+            
+            if current_counter > 0:
                 detect_type = 1
                 kiosk_state.reset_counter()
                 return DetectionResponse(DetectType=detect_type)
-
+            
             return HealthResponse()
-
-        elif process_id == 4:
-            logger.info(f"Purchase completed for kiosk {request.kioskid}")
-            kiosk_state.is_subscribing = False
-            return HealthResponse()
-
-        elif process_id == 5:
-            logger.info(f"Sales closed for kiosk {request.kioskid}")
-            kiosk_state.is_subscribing = False
-            return HealthResponse()
+            
 
         else:
             raise HTTPException(status_code=400, detail=f"Invalid processid: {process_id}")

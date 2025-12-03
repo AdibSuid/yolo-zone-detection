@@ -3,7 +3,7 @@
     "cam1": {
       "enabled": true,
       "source_type": "FILE",
-      "path": "test_videos/WIN_20250722_20_58_48_Pro.mp4",
+      "path": "test_videos/sample1.mp4",
       "stream_resolution": [
         1920,
         1080

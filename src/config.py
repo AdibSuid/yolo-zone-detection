@@ -77,7 +77,7 @@ class PerformanceMode:
         "model": "best_openvino_model/",
         "resolution": (1080, 1920),  # Match camera's actual capability
         "frame_skip": 1,  # Process every frame
-        "conf_threshold": 0.5,  # Your config: confidence=0.5
+        "conf_threshold": 0.7,  # Your config: confidence=0.5
         "iou_threshold": 0.5,  # Your config: iou_threshold=0.5
         "annotation_thickness": 2,
         "text_scale": 0.5
@@ -194,7 +194,7 @@ class MQTTConfig:
 class DwellConfig:
     """Dwell time configuration for zone detection."""
     
-    DEFAULT_DWELL_TIME_SECONDS = 1.0  # 1 second dwell time
+    DEFAULT_DWELL_TIME_SECONDS = 0.5  # 1 second dwell time
     DEFAULT_FPS = 30  # Assumed FPS for frame calculations
     
     @staticmethod
